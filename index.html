@@ -2,1437 +2,352 @@
 <html lang="el">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Προμηθευτής+ | Τιμές προμηθευτών και τιμολόγια σε μία εφαρμογή</title>
+<meta name="description" content="Φωτογράφισε το τιμολόγιο. Το Προμηθευτής+ καταγράφει προμηθευτές, είδη και τιμές και σε ειδοποιεί όταν κάτι ακριβαίνει. Για εστιατόρια, καφέ, μαγαζιά και κάθε επιχείρηση. Από την AR Akron Services.">
 <meta name="theme-color" content="#1C2230">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Τιμολόγια | AR Akron</title>
+<meta property="og:title" content="Προμηθευτής+: ο προμηθευτής ανέβασε την τιμή. Εσύ το έμαθες;">
+<meta property="og:description" content="Φωτογράφισε το τιμολόγιο και μάθε αμέσως τι ακρίβυνε, πόσο και πόσα σου κοστίζει.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="el_GR">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Προμηθευτής+",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "inLanguage": "el",
+  "description": "Εφαρμογή που διαβάζει τιμολόγια αγορών, φτιάχνει καρτέλες προμηθευτών και ιστορικό τιμών, και ειδοποιεί όταν αλλάζουν οι τιμές.",
+  "offers": [
+    {"@type": "Offer", "name": "Basic", "price": "24", "priceCurrency": "EUR", "description": "Μηνιαία συνδρομή, πλέον ΦΠΑ"},
+    {"@type": "Offer", "name": "Pro", "price": "49", "priceCurrency": "EUR", "description": "Μηνιαία συνδρομή, πλέον ΦΠΑ"},
+    {"@type": "Offer", "name": "Group", "price": "99", "priceCurrency": "EUR", "description": "Μηνιαία συνδρομή, πλέον ΦΠΑ"}
+  ],
+  "publisher": {"@type": "Organization", "name": "AR Akron Services", "url": "https://arakronservices.gr"}
+}
+</script>
 <style>
-/* Κατάστιχο: χαρτί, μελάνι και ορείχαλκος μόνο εκεί που μετράει */
 :root{
-  --ink:#1C2230; --ink-2:#2B3345; --ink-3:#3A4356;
-  --paper:#F6F6F3; --card:#FFFFFF; --text:#1C2230; --muted:#5F6878; --faint:#8D95A3;
-  --line:#E4E2DC; --line2:#EFEEEA;
-  --brass:#B8862B; --brass-d:#97691A; --brass-soft:#F8F0DF;
-  --accent:#1C2230; --accent-d:#000; --accent-soft:#EEF0F4;
-  --up:#B42318; --up-soft:#FCEFEC; --down:#227A4B; --down-soft:#EAF5EE; --warn:#8A5A00; --warn-soft:#FFF5DC;
-  --r-lg:12px; --r:8px; --r-sm:6px;
+  --ink:#1C2230; --ink-2:#2B3345; --paper:#F6F6F3; --card:#fff; --text:#1C2230; --muted:#5F6878; --faint:#8D95A3;
+  --line:#E4E2DC; --line2:#EFEEEA; --brass:#B8862B; --brass-l:#C9963A; --brass-soft:#F8F0DF;
+  --up:#B42318; --up-soft:#FCEFEC; --down:#227A4B; --down-soft:#EAF5EE;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--paper);color:var(--text);font-family:Commissioner,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
-button,input,select{font:inherit;color:inherit}
-a{color:var(--ink);text-decoration-color:var(--brass);text-underline-offset:3px}
-:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--text);font-family:Commissioner,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;padding:14px 22px;font-weight:650;font-size:16px;text-decoration:none;border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.btn.g{background:var(--brass);color:var(--ink)} .btn.g:hover{background:var(--brass-l)}
+.btn.o{border-color:rgba(255,255,255,.22);color:#fff} .btn.o:hover{background:rgba(255,255,255,.06)}
+.btn.ol{border-color:var(--line);background:#fff;color:var(--ink)} .btn.ol:hover{border-color:#CFCCC4}
+.btn.k{background:var(--ink);color:#fff} .btn.k:hover{background:var(--ink-2)}
 
-/* Πλαϊνό μενού σε μελάνι */
-.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;background:linear-gradient(90deg,var(--ink) 240px,transparent 240px)}
-.side{background:var(--ink);color:#C8CDD7;padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:2px}
-.brand{display:flex;flex-direction:column;padding:2px 12px 22px}
-.brand b{font-size:19px;font-weight:700;letter-spacing:-.01em;color:#fff}
-.brand span{font-size:12px;color:#8E96A6;margin-top:2px}
-.nav{position:relative;display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r);border:0;background:none;cursor:pointer;color:#C8CDD7;font-weight:500;text-align:left;width:100%}
-.nav:hover{background:rgba(255,255,255,.05);color:#fff}
-.nav.on{background:rgba(255,255,255,.08);color:#fff}
-.nav.on::before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--brass)}
-.nav .cnt{margin-left:auto;background:var(--brass);color:var(--ink);font-size:11px;font-weight:700;border-radius:99px;padding:1px 7px}
-.nav svg{width:18px;height:18px;flex:none;opacity:.9}
-.scanbtn{margin:0 0 16px;justify-content:center;background:var(--brass);color:var(--ink);font-weight:600;padding:11px 12px}
-.scanbtn:hover{background:#C9963A;color:var(--ink)}
-.side-foot{margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;color:#8E96A6}
-.side-foot b{display:block;color:#E3E6EC;font-weight:600}
+/* Κεφαλίδα + hero σε μελάνι */
+.top{background:var(--ink);color:#E3E6EC}
+nav.bar{display:flex;align-items:center;gap:28px;padding:20px 0}
+.logo{display:flex;flex-direction:column;text-decoration:none}
+.logo b{font-size:21px;font-weight:800;color:#fff;letter-spacing:-.02em}
+.logo b em{font-style:normal;color:var(--brass)}
+.logo span{font-size:12px;color:#8E96A6}
+nav.bar .links{display:flex;gap:24px;margin-left:auto;font-size:15px}
+nav.bar .links a{text-decoration:none;color:#C8CDD7} nav.bar .links a:hover{color:#fff}
+nav.bar .btn{padding:10px 16px;font-size:15px}
 
-.main{padding:32px 40px 64px;max-width:1200px;width:100%;min-width:0}
-.mtop,.bnav{display:none}
-.phead{display:flex;align-items:flex-end;gap:16px;margin-bottom:22px;flex-wrap:wrap}
-.phead .sp{flex:1}
-h1{font-size:26px;margin:0;font-weight:700;letter-spacing:-.02em;line-height:1.2}
-h2{font-size:16px;margin:0 0 14px;font-weight:650;letter-spacing:-.005em}
-.sub{color:var(--muted);margin:4px 0 22px}
-.phead .sub{margin-bottom:0}
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:56px;align-items:center;padding:56px 0 88px}
+.hero h1{font-size:clamp(36px,5vw,58px);line-height:1.06;letter-spacing:-.035em;margin:0 0 22px;color:#fff;font-weight:800}
+.hero h1 span{display:block;color:#C8CDD7;font-weight:600}
+.hero p.lead{font-size:19px;color:#C8CDD7;max-width:520px;margin:0 0 32px}
+.hero .cta{display:flex;gap:12px;flex-wrap:wrap}
+.hero .note{margin-top:18px;font-size:14px;color:#8E96A6}
 
-/* Επιφάνειες: μία ακτίνα για περιέκτες, μικρότερη για πεδία */
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px}
-.grid{display:grid;gap:16px}
-.g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
-.split{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
-.stat .l{color:var(--muted);font-size:13px} .stat .v{font-size:24px;font-weight:700;margin-top:4px;letter-spacing:-.02em} .stat .s{font-size:12.5px;color:var(--faint);margin-top:2px}
+/* Η «στιγμή» του προϊόντος: τιμολόγιο → ειδοποίηση */
+.demo{position:relative;min-height:440px}
+.inv{position:absolute;left:0;top:0;width:78%;background:#FDFDFB;color:var(--ink);border-radius:6px;padding:22px 22px 26px;box-shadow:0 24px 48px rgba(0,0,0,.35);transform:rotate(-2.2deg)}
+.inv .ih{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px}
+.inv .ih b{display:block;color:var(--ink);font-size:14px}
+.inv table{width:100%;border-collapse:collapse;font-size:13px}
+.inv td{padding:6px 0;border-bottom:1px dashed var(--line2)}
+.inv td.r{text-align:right}
+.inv tr.hl td{background:var(--brass-soft)}
+.inv .it{display:flex;justify-content:flex-end;gap:18px;margin-top:12px;font-size:13px;color:var(--muted)}
+.inv .it b{color:var(--ink)}
+.alertc{position:absolute;right:0;bottom:0;width:72%;background:#fff;color:var(--ink);border-radius:14px;padding:18px 20px;box-shadow:0 28px 60px rgba(0,0,0,.4);border:1px solid var(--line)}
+.alertc .t{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;margin-bottom:10px}
+.alertc .t i{width:8px;height:8px;border-radius:99px;background:var(--up);display:inline-block}
+.arow{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-top:1px solid var(--line2)}
+.arow:first-of-type{border-top:0}
+.arow .n{font-weight:650}
+.arow .d{font-size:20px;font-weight:800;color:var(--up);text-align:right}
+.arow .s{font-size:13px;color:var(--muted)}
+.arow .e{font-size:13px;color:var(--muted);text-align:right}
+.arow.dn .d{color:var(--down)}
+.alertc{animation:rise .7s .35s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 
-/* Λωρίδα βασικών αριθμών: ένα ενιαίο πλαίσιο με διαχωριστικά */
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:16px}
-.kpis.k3{grid-template-columns:repeat(3,1fr)}
-.kpi{padding:16px 20px;border-left:1px solid var(--line2);min-width:0}
-.kpi:first-child{border-left:0}
-.kpi .l{font-size:13px;color:var(--muted)}
-.kpi .v{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:2px;white-space:nowrap}
-.kpi .s{font-size:12.5px;color:var(--faint);margin-top:2px}
-.kpi.alert-k .v{color:var(--up)}
+section{padding:96px 0}
+h2{font-size:clamp(28px,3.4vw,40px);letter-spacing:-.03em;line-height:1.12;margin:0 0 14px;font-weight:800}
+.intro{color:var(--muted);font-size:18px;max-width:640px;margin:0 0 48px}
 
-.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.sp{flex:1}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:#fff;border-radius:var(--r);padding:8px 14px;cursor:pointer;font-weight:550;white-space:nowrap;color:var(--ink)}
-.btn:hover{border-color:#CFCCC4;background:#FBFBF9}
-.btn.p{background:var(--ink);border-color:var(--ink);color:#fff} .btn.p:hover{background:var(--ink-2)}
-.btn.g{background:var(--brass);border-color:var(--brass);color:var(--ink)} .btn.g:hover{background:#C9963A}
-.btn.d{color:var(--up)} .btn.sm{padding:5px 10px;font-size:13px}
-.btn:disabled{opacity:.45;cursor:default}
-.btn svg{width:17px;height:17px}
+/* Βήματα: πραγματική σειρά, άρα αριθμημένα */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid var(--ink)}
+.step{padding:28px 28px 8px 0}
+.step+.step{padding-left:28px;border-left:1px solid var(--line)}
+.step .num{font-size:15px;font-weight:700;color:var(--brass)}
+.step h3{font-size:22px;margin:8px 0 8px;letter-spacing:-.015em}
+.step p{margin:0;color:var(--muted)}
 
-/* Πίνακες σαν λογιστική στήλη */
-table{width:100%;border-collapse:collapse}
-th{font-size:12.5px;font-weight:600;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:11px 10px;border-bottom:1px solid var(--line2);vertical-align:middle}
-tbody tr:last-child td{border-bottom:0}
-tr.click{cursor:pointer} tr.click:hover td{background:#FAFAF7}
-.r{text-align:right} .nw{white-space:nowrap}
-.tbl{overflow-x:auto;margin:0 -20px;padding:0 20px}
-.mut{color:var(--muted)} .sm{font-size:13px}
-.empty{text-align:center;color:var(--muted);padding:40px 12px}
-.badge{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:650;padding:2px 8px;border-radius:99px;white-space:nowrap}
-.b-up{background:var(--up-soft);color:var(--up)} .b-down{background:var(--down-soft);color:var(--down)} .b-eq{background:var(--line2);color:var(--muted)} .b-warn{background:var(--warn-soft);color:var(--warn)} .b-acc{background:var(--accent-soft);color:var(--ink)}
-.totals td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
-.money{font-weight:650}
+/* Τι παίρνεις: λίστα δύο στηλών, όχι πλέγμα από ίδιες κάρτες */
+.feat{display:grid;grid-template-columns:repeat(2,1fr);gap:0 64px}
+.f{display:grid;grid-template-columns:40px 1fr;gap:4px 16px;padding:24px 0;border-bottom:1px solid var(--line)}
+.f svg{width:26px;height:26px;color:var(--brass);grid-row:span 2;margin-top:2px}
+.f h3{margin:0;font-size:19px;letter-spacing:-.01em}
+.f p{margin:0;color:var(--muted);font-size:16px}
 
-input.in,select.in{border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;background:#fff;width:100%;min-width:0}
-input.in:focus,select.in:focus{outline:2px solid var(--brass-soft);border-color:var(--brass)}
-.field{display:flex;flex-direction:column;gap:5px;min-width:0}
-.field>span{font-size:12.5px;color:var(--muted);font-weight:500}
-.field small{font-size:12px;color:var(--muted)} .field small.err{color:var(--up)}
-.field input.invalid{border-color:var(--up);background:#FFFBFA}
-.fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.fgrid .wide{grid-column:span 2}
+/* Το παράδειγμα με τα νούμερα */
+.math{background:var(--ink);color:#E3E6EC;border-radius:18px;padding:56px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:center}
+.math h2{color:#fff}
+.math p{color:#C8CDD7;margin:0}
+.calc{font-size:20px;line-height:2}
+.calc div{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.calc div span:last-child{font-weight:700;color:#fff}
+.calc .res{border:0;margin-top:10px;font-size:28px;align-items:baseline;flex-wrap:wrap;gap:4px 16px}
+.calc .res span:last-child{white-space:nowrap}
+.calc p{line-height:1.5}
+.calc .res span:last-child{color:var(--brass);font-weight:800}
 
-/* Φίλτρα περιόδου σαν segmented control */
-.chips{display:inline-flex;gap:2px;flex-wrap:wrap;background:var(--line2);border-radius:var(--r);padding:3px}
-.chip{border:0;background:none;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;font-weight:550;color:var(--muted)}
-.chip:hover{color:var(--ink)}
-.chip.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(28,34,48,.12)}
+/* Τιμές */
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch}
+.plan{background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px;display:flex;flex-direction:column}
+.plan.pop{border:2px solid var(--ink);position:relative}
+.plan .tag{position:absolute;top:-13px;left:28px;background:var(--ink);color:#fff;font-size:13px;font-weight:650;padding:3px 12px;border-radius:99px}
+.plan h3{margin:0;font-size:20px}
+.plan .for{color:var(--muted);font-size:15px;margin:4px 0 20px}
+.price{font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.price small{font-size:16px;font-weight:500;color:var(--muted);letter-spacing:0}
+.yr{font-size:14px;color:var(--muted);margin:8px 0 22px}
+.plan ul{list-style:none;padding:0;margin:0 0 26px;flex:1}
+.plan li{padding:8px 0 8px 26px;position:relative;font-size:15.5px;border-top:1px solid var(--line2)}
+.plan li::before{content:"";position:absolute;left:2px;top:15px;width:12px;height:7px;border-left:2px solid var(--down);border-bottom:2px solid var(--down);transform:rotate(-45deg)}
+.plan li.soon{color:var(--muted)}
+.plan li.soon::before{border-color:var(--faint)}
+.soonb{font-size:12px;font-weight:650;background:var(--line2);color:var(--muted);padding:1px 7px;border-radius:99px;margin-left:6px;white-space:nowrap}
+.plan .btn{width:100%}
+.pnote{margin-top:22px;color:var(--muted);font-size:15px}
 
-.drop{border:1.5px dashed #CFCCC4;border-radius:var(--r-lg);background:#fff;padding:44px 20px;text-align:center}
-.drop.over{border-color:var(--brass);background:var(--brass-soft)}
-.drop-t{font-size:17px;font-weight:650;margin-bottom:4px}
-.thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-.thumb{position:relative;width:96px;height:124px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
-.thumb img{width:100%;height:100%;object-fit:cover}
-.thumb button{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:99px;border:0;background:rgba(28,34,48,.75);color:#fff;cursor:pointer;line-height:1}
-.review{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
-.preview{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;display:flex;flex-direction:column;gap:8px}
-.preview img{width:100%;border-radius:var(--r);border:1px solid var(--line)}
-.lines input.in{padding:6px 7px;font-size:14px}
-.lines td{padding:5px 4px;border-bottom:1px solid var(--line2)}
-.lines th{padding:6px 4px}
-.alert{border-radius:var(--r);padding:11px 14px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
-.alert.w{background:var(--warn-soft);color:#5C3D00} .alert.e{background:var(--up-soft);color:#7A1A10} .alert.i{background:var(--accent-soft);color:var(--ink)} .alert.ok{background:var(--down-soft);color:#14512F}
-.spin{width:38px;height:38px;border:3px solid var(--line2);border-top-color:var(--brass);border-radius:99px;animation:sp .8s linear infinite;margin:0 auto 14px}
-@keyframes sp{to{transform:rotate(360deg)}}
-.modal-bg{position:fixed;inset:0;background:rgba(28,34,48,.5);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow:auto}
-.modal{background:#fff;border-radius:14px;width:100%;max-width:840px;padding:24px;box-shadow:0 24px 60px rgba(28,34,48,.28)}
-.modal.sm{max-width:520px}
-.mhead{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
-.x{border:0;background:var(--line2);width:34px;height:34px;border-radius:99px;cursor:pointer;font-size:18px;flex:none;color:var(--ink)}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:var(--r);font-weight:550;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.2);max-width:calc(100vw - 32px)}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:14px} .kv dt{color:var(--muted)} .kv dd{margin:0}
-.sup-name{font-weight:600}
-.imgs{display:flex;gap:10px;overflow-x:auto} .imgs img{height:220px;border-radius:var(--r);border:1px solid var(--line);cursor:zoom-in}
-.mb{margin-bottom:16px} .mt{margin-top:16px}
+/* Συχνές ερωτήσεις */
+.faq{max-width:820px}
+details{border-bottom:1px solid var(--line);padding:4px 0}
+summary{list-style:none;cursor:pointer;padding:18px 36px 18px 0;font-weight:650;font-size:18px;position:relative}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";position:absolute;right:4px;top:14px;font-size:26px;font-weight:400;color:var(--brass);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{margin:0 0 20px;color:var(--muted);max-width:700px}
 
-/* Ομάδες κατηγοριών */
-.grps{display:flex;flex-direction:column;gap:8px}
-.grp{border:1px solid var(--line);border-radius:var(--r);background:#fff;overflow:hidden}
-.grp>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none;font-weight:600}
-.grp>summary::-webkit-details-marker{display:none}
-.grp>summary:hover{background:#FAFAF7}
-.grp .gc{background:var(--line2);color:var(--muted);font-size:12px;border-radius:99px;padding:1px 8px;font-weight:600}
-.grp .chev{color:var(--faint);font-size:20px;transition:transform .15s;margin-left:4px} .grp[open] .chev{transform:rotate(90deg)}
-.grp[open]>summary{border-bottom:1px solid var(--line)}
-.gbody{padding:0 16px 6px} .gbody .tbl{margin:0 -16px;padding:0 16px}
+.final{text-align:left;display:flex;align-items:center;gap:32px;flex-wrap:wrap;background:var(--brass-soft);border:1px solid #EADBB8;border-radius:18px;padding:48px 56px}
+.final h2{margin:0}
+.final p{margin:6px 0 0;color:var(--muted)}
+.final .sp{flex:1}
 
-/* Αρχική: «Τι ακρίβυνε» */
-.rise{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 18px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line2);cursor:pointer}
-.rise:last-child{border-bottom:0}
-.rise:hover .rn{text-decoration:underline;text-decoration-color:var(--brass);text-underline-offset:3px}
-.rise .rn{font-weight:600}
-.rise .rs{font-size:13px;color:var(--muted)}
-.rise .rp{font-size:13.5px;color:var(--muted);text-align:right;white-space:nowrap}
-.rise .rp b{color:var(--text)}
-.rise .rd{font-size:18px;font-weight:700;color:var(--up);text-align:right;min-width:78px}
-.rise .rd small{display:block;font-size:12px;font-weight:500;color:var(--muted)}
-.bars{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:22px}
-.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
-.bar i{display:block;width:100%;max-width:38px;background:#7C879C;border-radius:4px 4px 0 0;min-height:2px}
-.bar.cur i{background:var(--brass)}
-.bar em{font-style:normal;font-size:11.5px;font-weight:650;margin-bottom:4px;white-space:nowrap}
-.bar span{font-size:12px;color:var(--muted);margin-top:6px}
-.share{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:9px 0;cursor:pointer}
-.share .bg{grid-column:1/-1;height:4px;background:var(--line2);border-radius:4px;overflow:hidden}
-.share .bg i{display:block;height:100%;background:var(--ink-3);border-radius:4px}
+footer{background:var(--ink);color:#8E96A6;padding:56px 0 40px;font-size:15px}
+.fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px}
+footer h4{color:#E3E6EC;margin:0 0 12px;font-size:15px}
+footer a{color:#C8CDD7;text-decoration:none} footer a:hover{color:#fff}
+footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.copy{border-top:1px solid rgba(255,255,255,.08);margin-top:40px;padding-top:20px;font-size:13px}
 
-@media (max-width:1050px){ .g4,.kpis{grid-template-columns:repeat(2,1fr)} .kpi:nth-child(3){border-left:0} .kpi:nth-child(n+3){border-top:1px solid var(--line2)} .fgrid{grid-template-columns:repeat(2,1fr)} .review,.split{grid-template-columns:1fr} .preview{position:static;max-height:none;flex-direction:row;overflow-x:auto} .preview img{width:auto;height:240px} }
-@media (max-width:860px){
-  .app{grid-template-columns:1fr;background:none} .side{display:none}
-  .main{padding:18px 16px 104px}
-  .mtop{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--ink);color:#fff;position:sticky;top:0;z-index:20}
-  .mtop .brand{padding:0;flex-direction:row;align-items:baseline;gap:8px}
-  .icbtn{position:relative;border:0;background:rgba(255,255,255,.08);color:#fff;width:38px;height:38px;border-radius:99px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-  .icbtn svg{width:19px;height:19px} .icbtn .dot{position:absolute;top:6px;right:7px;width:9px;height:9px;background:var(--brass);border-radius:99px;border:2px solid var(--ink)}
-  .bnav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20}
-  .bnav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer;padding:4px 0;font-weight:550}
-  .bnav button.on{color:var(--ink)} .bnav svg{width:22px;height:22px}
-  .bnav .big span.c{background:var(--brass);color:var(--ink);width:50px;height:50px;border-radius:99px;display:flex;align-items:center;justify-content:center;margin-top:-22px;box-shadow:0 6px 16px rgba(184,134,43,.4);border:3px solid #fff}
-  .g3,.g2{grid-template-columns:1fr} .fgrid .wide{grid-column:span 2}
-  h1{font-size:22px}
-  .kpi{padding:13px 14px} .kpi .v{font-size:21px}
-  .hide-m{display:none}
-  .phead .btn.g{display:none}
+@media (max-width:960px){
+  .hero{grid-template-columns:1fr;gap:40px;padding:32px 0 64px}
+  .demo{min-height:400px;max-width:520px}
+  .steps{grid-template-columns:1fr;border-top:0}
+  .step,.step+.step{padding:22px 0;border-left:0;border-top:1px solid var(--line)}
+  .step:first-child{border-top:2px solid var(--ink)}
+  .feat{grid-template-columns:1fr}
+  .math{grid-template-columns:1fr;padding:36px 28px}
+  .plans{grid-template-columns:1fr}
+  .plan.pop{order:-1}
+  .final{padding:36px 28px}
+  .fgrid{grid-template-columns:1fr}
+  nav.bar .links{display:none}
+  nav.bar .btn{margin-left:auto}
+}
+@media (max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 18px}
+  section{padding:68px 0}
+  .demo{min-height:380px}
+  .inv{width:88%;padding:16px}
+  .alertc{width:84%;padding:14px 16px}
+  .hero .cta .btn{width:100%}
+  .calc{font-size:16px}
+  .calc .res{flex-direction:column;align-items:flex-start;font-size:18px}
+  .calc .res span:last-child{font-size:32px;line-height:1.2}
+  .inv .ih{font-size:11px} .inv .ih b{font-size:12.5px}
+  .inv table{font-size:12px}
 }
 </style>
 </head>
 <body>
-<div id="root"></div>
-<script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo, useRef } = React;
 
-/* =========================================================
-   Βάση δεδομένων (IndexedDB, στη συσκευή)
-   ========================================================= */
-const DB_NAME = "timologia", DB_VER = 1;
-const STORES = ["suppliers", "invoices", "files", "alerts", "meta"];
-let _db = null;
-function openDB() {
-  if (_db) return Promise.resolve(_db);
-  return new Promise((res, rej) => {
-    const r = indexedDB.open(DB_NAME, DB_VER);
-    r.onupgradeneeded = () => { const db = r.result; STORES.forEach(s => { if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: "id" }); }); };
-    r.onsuccess = () => { _db = r.result; res(_db); };
-    r.onerror = () => rej(r.error);
-  });
-}
-async function tx(store, mode, fn) {
-  const db = await openDB();
-  return new Promise((res, rej) => {
-    const t = db.transaction(store, mode); const s = t.objectStore(store);
-    const req = fn(s);
-    t.oncomplete = () => res(req && "result" in req ? req.result : undefined);
-    t.onerror = () => rej(t.error);
-  });
-}
-const dbAll = s => tx(s, "readonly", st => st.getAll());
-const dbGet = (s, id) => tx(s, "readonly", st => st.get(id));
-const dbPut = (s, v) => tx(s, "readwrite", st => st.put(v));
-const dbDel = (s, id) => tx(s, "readwrite", st => st.delete(id));
-const dbClear = s => tx(s, "readwrite", st => st.clear());
+<header class="top">
+  <div class="wrap">
+    <nav class="bar" aria-label="Κύριο μενού">
+      <a class="logo" href="/"><b>Προμηθευτής<em>+</em></b><span>από την AR Akron Services</span></a>
+      <div class="links"><a href="#pos">Πώς δουλεύει</a><a href="#ti">Δυνατότητες</a><a href="#times">Τιμές</a><a href="#faq">Ερωτήσεις</a></div>
+      <a class="btn g" href="/app/">Δωρεάν δοκιμή</a>
+    </nav>
 
-/* =========================================================
-   Βοηθητικά
-   ========================================================= */
-const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
-const EUR = new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR" });
-const N4 = new Intl.NumberFormat("el-GR", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-const N2 = new Intl.NumberFormat("el-GR", { maximumFractionDigits: 3 });
-const fmtEur = v => (v == null || isNaN(v)) ? "—" : EUR.format(v);
-const fmtPrice = v => (v == null || isNaN(v)) ? "—" : N4.format(v) + " €";
-const fmtQty = v => (v == null || isNaN(v)) ? "" : N2.format(v);
-const fmtDate = iso => { if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso || "—"; const [y, m, d] = iso.slice(0, 10).split("-"); return `${d}/${m}/${y}`; };
-const toISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const todayISO = () => toISO(new Date());
-function parseNum(v) {
-  if (v == null || v === "") return null;
-  if (typeof v === "number") return isNaN(v) ? null : v;
-  let s = String(v).trim().replace(/[€%\s]/g, "");
-  if (s.includes(",") && s.includes(".")) {
-    s = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
-  } else s = s.replace(",", ".");
-  const n = parseFloat(s);
-  return isNaN(n) ? null : n;
-}
-const numStr = v => (v == null || v === "" || isNaN(v)) ? "" : String(v).replace(".", ",");
-const norm = s => (s || "").toString().normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
-const sum = (arr, f) => arr.reduce((a, x) => a + (f(x) || 0), 0);
-function validAfm(a) {
-  if (!/^\d{9}$/.test(a) || a === "000000000") return false;
-  let s = 0; for (let i = 0; i < 8; i++) s += Number(a[i]) * 2 ** (8 - i);
-  return (s % 11) % 10 === Number(a[8]);
-}
-function effPrice(l) { if (l.net > 0) return l.net / (l.quantity > 0 ? l.quantity : 1); if (l.unitPrice > 0) return l.unitPrice * (1 - (l.discountPct || 0) / 100); return null; }
-// Κλειδί σύγκρισης: αγνοεί τόνους, κεφαλαία, τελείες και σύμβολα ("Φέτα Π.Ο.Π." = "ΦΕΤΑ ΠΟΠ")
-const normKey = s => norm(s).replace(/[.'΄`’·]/g, "").replace(/[^A-Z0-9Α-Ω]+/g, " ").trim();
-function productKey(supplierId, l) { const c = normKey(l.code); return supplierId + "|" + (c ? "c:" + c : "d:" + normKey(l.description)); }
-const pctChange = (a, b) => (a && b != null) ? (b - a) / a * 100 : null;
-
-function periodRange(p) {
-  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
-  switch (p.preset) {
-    case "month": return { from: toISO(new Date(y, m, 1)), to: toISO(new Date(y, m + 1, 0)) };
-    case "prev": return { from: toISO(new Date(y, m - 1, 1)), to: toISO(new Date(y, m, 0)) };
-    case "quarter": return { from: toISO(new Date(y, m - 2, 1)), to: toISO(new Date(y, m + 1, 0)) };
-    case "year": return { from: `${y}-01-01`, to: `${y}-12-31` };
-    case "custom": return { from: p.from || "0000-01-01", to: p.to || "9999-12-31" };
-    default: return { from: "0000-01-01", to: "9999-12-31" };
-  }
-}
-const inRange = (d, r) => d >= r.from && d <= r.to;
-
-async function compressImage(file, maxDim = 2000, quality = 0.85) {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-    let w = img.naturalWidth, h = img.naturalHeight; const s = Math.min(1, maxDim / Math.max(w, h));
-    w = Math.round(w * s); h = Math.round(h * s);
-    const c = document.createElement("canvas"); c.width = w; c.height = h;
-    const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
-    return await new Promise(res => c.toBlob(res, "image/jpeg", quality));
-  } finally { URL.revokeObjectURL(url); }
-}
-const blobToBase64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); });
-function download(name, content, type) {
-  const blob = content instanceof Blob ? content : new Blob([content], { type });
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-}
-
-/* Κατηγορίες: δεν υπάρχουν έτοιμες. Τις δημιουργεί το Gemini ανά επιχείρηση (settings.categories). */
-const NO_CAT = "Χωρίς κατηγορία";
-const catLabel = c => c || NO_CAT;
-// Ίδια κατηγορία γραμμένη αλλιώς ("γαλακτοκομικα" = "Γαλακτοκομικά") → χρησιμοποιούμε την υπάρχουσα
-function canonCat(label, list) { const l = (label || "").trim(); if (!l) return ""; return list.find(c => normKey(c) === normKey(l)) || l; }
-
-/* Προϊόντα & ιστορικό τιμών (υπολογίζονται από τα τιμολόγια) */
-function buildProducts(invoices, catOverrides = {}) {
-  const map = new Map();
-  const sorted = [...invoices].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
-  for (const inv of sorted) {
-    const seen = new Set();
-    for (const l of inv.lines) {
-      const p = effPrice(l); if (p == null || p <= 0) continue;
-      const key = productKey(inv.supplierId, l);
-      if (seen.has(key)) continue; seen.add(key); // ίδιο είδος δύο φορές στο ίδιο τιμολόγιο → μία εγγραφή
-      let e = map.get(key);
-      if (!e) { e = { key, supplierId: inv.supplierId, code: l.code, description: l.description, unit: l.unit, history: [] }; map.set(key, e); }
-      if (l.description) e.description = l.description; if (l.unit) e.unit = l.unit; if (l.code) e.code = l.code;
-      if (l.category) e.lineCat = l.category;
-      e.history.push({ date: inv.date, price: p, qty: l.quantity, invoiceId: inv.id, invoiceNo: inv.number, createdAt: inv.createdAt });
-    }
-  }
-  return [...map.values()].map(e => {
-    const h = e.history, last = h[h.length - 1], prev = h.length > 1 ? h[h.length - 2] : null;
-    const prices = h.map(x => x.price);
-    const category = (e.key in catOverrides ? catOverrides[e.key] : e.lineCat) || "";
-    return { ...e, category, last, prev, change: prev ? pctChange(prev.price, last.price) : null, min: Math.min(...prices), max: Math.max(...prices), first: h[0] };
-  });
-}
-
-/* Ειδοποιήσεις τιμών: υπολογίζονται από όλο το ιστορικό, άρα δεν εξαρτώνται από τη σειρά καταχώρησης */
-function buildAlerts(products, threshold) {
-  const out = [];
-  for (const p of products) {
-    const h = p.history;
-    for (let i = 1; i < h.length; i++) {
-      const pct = pctChange(h[i - 1].price, h[i].price);
-      if (pct == null || Math.abs(pct) < threshold || Math.abs(pct) < 0.01) continue;
-      out.push({
-        id: p.key + "|" + h[i].invoiceId, invoiceId: h[i].invoiceId, supplierId: p.supplierId, productKey: p.key, category: p.category,
-        code: p.code, description: p.description, unit: p.unit,
-        oldPrice: h[i - 1].price, newPrice: h[i].price, oldDate: h[i - 1].date, newDate: h[i].date,
-        pct, qty: h[i].qty, createdAt: h[i].createdAt || 0,
-      });
-    }
-  }
-  return out;
-}
-
-/* =========================================================
-   Εικονίδια
-   ========================================================= */
-const P = {
-  home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z",
-  doc: "M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm7 0v5h5M9 13h6M9 17h6",
-  cam: "M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zm8 3.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z",
-  truck: "M3 6h11v10H3zm11 4h4l3 3v3h-7M7 19.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z",
-  box: "M12 3 3 7.5v9L12 21l9-4.5v-9zm0 0v18M3 7.5l9 4.5 9-4.5",
-  bell: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zm4 4h4",
-  gear: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm8.5 3a8.5 8.5 0 0 0-.1-1.3l2-1.6-2-3.4-2.4 1a8 8 0 0 0-2.2-1.3L15.5 2h-4l-.4 2.4A8 8 0 0 0 9 5.7l-2.4-1-2 3.4 2 1.6a8.5 8.5 0 0 0 0 2.6l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 2.2 1.3l.4 2.4h4l.4-2.4a8 8 0 0 0 2.2-1.3l2.4 1 2-3.4-2-1.6c.1-.4.1-.9.1-1.3z",
-  up: "M12 19V5m-6 6 6-6 6 6", file: "M12 3v12m-5-5 5 5 5-5M5 21h14", plus: "M12 5v14M5 12h14", back: "M15 18l-6-6 6-6",
-};
-function Icon({ n }) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={P[n]} /></svg>; }
-
-/* =========================================================
-   Κοινά μικρά components
-   ========================================================= */
-function ChangeBadge({ pct }) {
-  if (pct == null || isNaN(pct)) return <span className="badge b-eq">—</span>;
-  if (Math.abs(pct) < 0.05) return <span className="badge b-eq">=</span>;
-  const up = pct > 0;
-  return <span className={"badge " + (up ? "b-up" : "b-down")}>{up ? "▲" : "▼"} {Math.abs(pct).toLocaleString("el-GR", { maximumFractionDigits: 1 })}%</span>;
-}
-
-function Modal({ children, onClose, small }) {
-  useEffect(() => { const h = e => e.key === "Escape" && onClose(); window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [onClose]);
-  return <div className="modal-bg" onMouseDown={e => e.target === e.currentTarget && onClose()}><div className={"modal" + (small ? " sm" : "")}>{children}</div></div>;
-}
-
-function Field({ label, value, onChange, type = "text", placeholder, wide, inputMode, invalid, hint }) {
-  return (
-    <label className={"field" + (wide ? " wide" : "")}>
-      <span>{label}</span>
-      <input className={"in" + (invalid ? " invalid" : "")} type={type} value={value ?? ""} placeholder={placeholder} inputMode={inputMode} onChange={e => onChange(e.target.value)} />
-      {hint && <small className={invalid ? "err" : ""}>{hint}</small>}
-    </label>
-  );
-}
-
-const PRESETS = [["month", "Αυτός ο μήνας"], ["prev", "Προηγ. μήνας"], ["quarter", "Τελ. 3 μήνες"], ["year", "Φέτος"], ["all", "Όλα"], ["custom", "Από–έως"]];
-function PeriodFilter({ value, onChange }) {
-  return (
-    <div className="row">
-      <div className="chips">{PRESETS.map(([k, l]) => <button key={k} className={"chip" + (value.preset === k ? " on" : "")} onClick={() => onChange({ ...value, preset: k })}>{l}</button>)}</div>
-      {value.preset === "custom" && (
-        <div className="row">
-          <input className="in" style={{ width: 150 }} type="date" value={value.from || ""} onChange={e => onChange({ ...value, from: e.target.value })} />
-          <span className="mut">έως</span>
-          <input className="in" style={{ width: 150 }} type="date" value={value.to || ""} onChange={e => onChange({ ...value, to: e.target.value })} />
+    <div class="hero">
+      <div>
+        <h1>Ο προμηθευτής ανέβασε την τιμή. <span>Εσύ το έμαθες;</span></h1>
+        <p class="lead">Φωτογράφισε το τιμολόγιο. Το Προμηθευτής+ καταγράφει προμηθευτές, είδη και τιμές, και σου λέει αμέσως τι ακρίβυνε και πόσα σου κοστίζει.</p>
+        <div class="cta">
+          <a class="btn g" href="/app/">Ξεκίνα δωρεάν</a>
+          <a class="btn o" href="#pos">Πώς δουλεύει</a>
         </div>
-      )}
-    </div>
-  );
-}
+        <div class="note">Χωρίς κάρτα, χωρίς κωδικούς Taxisnet. Ανοίγει στο κινητό και στον υπολογιστή.</div>
+      </div>
 
-function Sparkline({ points, w = 560, h = 140 }) {
-  if (points.length < 2) return <div className="mut sm">Χρειάζονται τουλάχιστον δύο αγορές για γράφημα.</div>;
-  const ps = points.map(p => p.price), min = Math.min(...ps), max = Math.max(...ps), pad = 18, span = max - min || 1;
-  const x = i => pad + i * (w - pad * 2) / (points.length - 1);
-  const y = v => h - pad - (v - min) / span * (h - pad * 2);
-  const d = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.price).toFixed(1)}`).join(" ");
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: "auto", display: "block" }}>
-      <line x1={pad} x2={w - pad} y1={y(min)} y2={y(min)} stroke="#EFEEEA" />
-      <line x1={pad} x2={w - pad} y1={y(max)} y2={y(max)} stroke="#e5e7eb" />
-      <path d={d} fill="none" stroke="#1C2230" strokeWidth="2" strokeLinejoin="round" />
-      {points.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.price)} r="4" fill="#fff" stroke="#B8862B" strokeWidth="2"><title>{fmtDate(p.date)}: {fmtPrice(p.price)}</title></circle>)}
-      <text x={w - pad} y={y(max) - 5} textAnchor="end" fontSize="11" fill="#5F6878">{fmtPrice(max)}</text>
-      <text x={w - pad} y={y(min) + 13} textAnchor="end" fontSize="11" fill="#5F6878">{fmtPrice(min)}</text>
-    </svg>
-  );
-}
-
-/* =========================================================
-   Έλεγχος & διόρθωση αναγνωσμένου τιμολογίου
-   ========================================================= */
-function emptyLine() { return { id: uid(), code: "", description: "", quantity: "", unit: "", unitPrice: "", discountPct: "", net: "", vatPct: "", category: "" }; }
-function emptyDraft() {
-  return { supplier: { afm: "", name: "", doy: "", address: "", phone: "", email: "" }, invoice: { number: "", date: todayISO(), type: "", mark: "", net: "", vat: "", total: "", paymentMethod: "", dueDate: "" }, lines: [emptyLine()], notes: "" };
-}
-function resultToDraft(r) {
-  const s = r.supplier || {}, i = r.invoice || {};
-  const lines = (r.lines || []).map(l => ({ id: uid(), code: l.code || "", description: l.description || "", quantity: numStr(l.quantity), unit: l.unit || "", unitPrice: numStr(l.unit_price), discountPct: numStr(l.discount_pct), net: numStr(l.net_amount), vatPct: numStr(l.vat_pct), category: l.category || "" }));
-  return {
-    supplier: { afm: (s.afm || "").replace(/\D/g, ""), name: s.name || "", doy: s.doy || "", address: s.address || "", phone: s.phone || "", email: s.email || "" },
-    buyer: { name: (r.buyer && r.buyer.name) || "", afm: ((r.buyer && r.buyer.afm) || "").replace(/\D/g, "") }, buyerOk: false,
-    invoice: { number: i.number || "", date: /^\d{4}-\d{2}-\d{2}$/.test(i.date || "") ? i.date : "", type: i.type || "", mark: i.mark || "", net: numStr(i.net_total), vat: numStr(i.vat_total), total: numStr(i.total), paymentMethod: i.payment_method || "", dueDate: /^\d{4}-\d{2}-\d{2}$/.test(i.due_date || "") ? i.due_date : "" },
-    lines: lines.length ? lines : [emptyLine()], notes: r.notes || "",
-  };
-}
-
-// Για επεξεργασία αποθηκευμένου τιμολογίου
-function invoiceToDraft(inv, sup) {
-  sup = sup || {};
-  return {
-    supplier: { afm: sup.afm || "", name: sup.name || "", doy: sup.doy || "", address: sup.address || "", phone: sup.phone || "", email: sup.email || "" },
-    buyer: { name: inv.buyerName || "", afm: inv.buyerAfm || "" }, buyerOk: true,
-    invoice: { number: inv.number || "", date: inv.date || "", type: inv.type || "", mark: inv.mark || "", net: numStr(inv.net), vat: numStr(inv.vat), total: numStr(inv.total), paymentMethod: inv.paymentMethod || "", dueDate: inv.dueDate || "" },
-    lines: inv.lines.length ? inv.lines.map(l => ({ id: uid(), code: l.code || "", description: l.description || "", quantity: numStr(l.quantity), unit: l.unit || "", unitPrice: numStr(l.unitPrice), discountPct: numStr(l.discountPct), net: numStr(l.net), vatPct: numStr(l.vatPct), category: l.category || "" })) : [emptyLine()],
-    notes: inv.notes || "",
-  };
-}
-
-function LinesEditor({ lines, onChange, categories = [] }) {
-  const set = (id, k, v) => onChange(lines.map(l => l.id === id ? { ...l, [k]: v } : l));
-  const cols = [["code", "Κωδικός", 90], ["description", "Περιγραφή", 230], ["quantity", "Ποσ.", 64], ["unit", "Μον.", 58], ["unitPrice", "Τιμή μον.", 84], ["discountPct", "Έκπτ.%", 60], ["net", "Καθαρή", 84], ["vatPct", "ΦΠΑ%", 54]];
-  return (
-    <div className="tbl">
-      <table className="lines" style={{ minWidth: 980 }}>
-        <thead><tr>{cols.map(([k, l]) => <th key={k}>{l}</th>)}<th>Κατηγορία</th><th></th></tr></thead>
-        <tbody>
-          {lines.map(l => (
-            <tr key={l.id}>
-              {cols.map(([k, , w]) => (
-                <td key={k} style={{ width: w }}>
-                  <input className="in" value={l[k]} inputMode={["code", "description", "unit"].includes(k) ? undefined : "decimal"} onChange={e => set(l.id, k, e.target.value)} />
-                </td>
-              ))}
-              <td style={{ width: 150 }}>
-                <input className="in" list="catlist" placeholder="—" value={l.category || ""} onChange={e => set(l.id, "category", e.target.value)} title="Κατηγορία: διάλεξε ή γράψε νέα" />
-              </td>
-              <td><button className="btn sm d" title="Διαγραφή γραμμής" onClick={() => onChange(lines.filter(x => x.id !== l.id))}>✕</button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <datalist id="catlist">{categories.map(c => <option key={c} value={c} />)}</datalist>
-      <button className="btn sm mt" onClick={() => onChange([...lines, emptyLine()])}><Icon n="plus" /> Γραμμή</button>
-    </div>
-  );
-}
-
-function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, saving, onSave, onCancel, categories, readMeta, editing, ownAfm }) {
-  const setS = (k, v) => setDraft(d => ({ ...d, supplier: { ...d.supplier, [k]: v } }));
-  const setI = (k, v) => setDraft(d => ({ ...d, invoice: { ...d.invoice, [k]: v } }));
-  const afm = draft.supplier.afm.replace(/\D/g, "");
-  const afmBad = afm.length > 0 && !validAfm(afm);
-  const linesNet = sum(draft.lines, l => parseNum(l.net));
-  const invNet = parseNum(draft.invoice.net);
-  const mismatch = invNet != null && linesNet > 0 && Math.abs(linesNet - invNet) > 0.05;
-  const totalCheck = (() => { const n = parseNum(draft.invoice.net), v = parseNum(draft.invoice.vat), t = parseNum(draft.invoice.total); return n != null && v != null && t != null && Math.abs(n + v - t) > 0.05; })();
-  const buyer = draft.buyer || { name: "", afm: "" };
-  const otherBuyer = !!(ownAfm && buyer.afm && buyer.afm !== ownAfm);
-  const missing = [
-    !draft.supplier.name.trim() && "επωνυμία προμηθευτή",
-    !/^\d{4}-\d{2}-\d{2}$/.test(draft.invoice.date || "") && "ημερομηνία",
-    parseNum(draft.invoice.total) == null && "σύνολο",
-  ].filter(Boolean);
-  const blocked = missing.length > 0 || (otherBuyer && !draft.buyerOk);
-  return (
-    <div className={previews.length ? "review" : ""}>
-      {previews.length > 0 && <div className="preview">{previews.map((p, i) => p.url ? <img key={i} src={p.url} alt="" /> : <div key={i} className="card sm mut">PDF: {p.name}</div>)}</div>}
-      <div className="grid">
-        {readMeta && <div className="mut sm">Διαβάστηκε από {readMeta.model}{readMeta.seconds != null ? ` σε ${readMeta.seconds}″` : ""}</div>}
-        {missing.length > 0 && <div className="alert e">Δεν διαβάστηκε: <b>{missing.join(", ")}</b>. Συμπλήρωσέ τα από το έγγραφο για να γίνει η αποθήκευση.</div>}
-        {otherBuyer && (
-          <div className="alert e" style={{ flexDirection: "column", gap: 8 }}>
-            <div><b>Το τιμολόγιο δεν είναι για την επιχείρησή σου.</b> Εκδόθηκε στην «{buyer.name || "άλλη επιχείρηση"}» με ΑΦΜ {buyer.afm}, ενώ το ΑΦΜ στις Ρυθμίσεις είναι {ownAfm}. Αν το αποθηκεύσεις, θα μετρήσει στα έξοδα και στις τιμές σου.</div>
-            <label className="row" style={{ gap: 8, cursor: "pointer" }}><input type="checkbox" checked={!!draft.buyerOk} onChange={e => setDraft(d => ({ ...d, buyerOk: e.target.checked }))} /> Θέλω να το καταχωρήσω παρόλα αυτά</label>
-          </div>
-        )}
-        {duplicate && <div className="alert e">⚠️ Υπάρχει ήδη τιμολόγιο {duplicate.number} από αυτόν τον προμηθευτή ({fmtDate(duplicate.date)}). Μήπως είναι διπλή καταχώρηση;</div>}
-        {draft.notes && <div className="alert i">📝 {draft.notes}</div>}
-        {(mismatch || totalCheck) && <div className="alert w">Έλεγξε τα ποσά: {mismatch && <>οι γραμμές αθροίζουν {fmtEur(linesNet)} ενώ η καθαρή αξία είναι {fmtEur(invNet)}. </>}{totalCheck && <>Καθαρή + ΦΠΑ δεν ισούται με το σύνολο.</>}</div>}
-
-        <div className="card">
-          <div className="row mb"><h2 style={{ margin: 0 }}>Προμηθευτής</h2>{matchedSupplier ? <span className="badge b-down">Υπάρχων: {matchedSupplier.name}</span> : <span className="badge b-acc">Νέος προμηθευτής</span>}</div>
-          <div className="fgrid">
-            <Field label="Επωνυμία" wide value={draft.supplier.name} onChange={v => setS("name", v)} />
-            <Field label="ΑΦΜ" value={draft.supplier.afm} inputMode="numeric" onChange={v => setS("afm", v)} invalid={afmBad} hint={afmBad ? "Μη έγκυρο ΑΦΜ" : ""} />
-            <Field label="ΔΟΥ" value={draft.supplier.doy} onChange={v => setS("doy", v)} />
-            <Field label="Διεύθυνση" wide value={draft.supplier.address} onChange={v => setS("address", v)} />
-            <Field label="Τηλέφωνο" value={draft.supplier.phone} onChange={v => setS("phone", v)} />
-            <Field label="Email" value={draft.supplier.email} onChange={v => setS("email", v)} />
-          </div>
+      <div class="demo" aria-label="Παράδειγμα: ένα τιμολόγιο και η ειδοποίηση που βγαίνει από αυτό">
+        <div class="inv" aria-hidden="true">
+          <div class="ih"><div><b>Γαλακτοκομικά Ηπείρου Α.Ε.</b>ΑΦΜ 094014201</div><div style="text-align:right"><b>Τιμολόγιο Α 1221</b>02/10/2026</div></div>
+          <table>
+            <tr><td>Γιαούρτι στραγγιστό</td><td class="r">12 κιλά</td><td class="r">3,40 €</td></tr>
+            <tr class="hl"><td>Φέτα ΠΟΠ Δωδώνη</td><td class="r">20 κιλά</td><td class="r">8,80 €</td></tr>
+            <tr><td>Κεφαλοτύρι</td><td class="r">6 κιλά</td><td class="r">14,40 €</td></tr>
+            <tr><td>Βούτυρο αγελάδος</td><td class="r">5 κιλά</td><td class="r">9,10 €</td></tr>
+          </table>
+          <div class="it"><span>Καθαρή <b>348,70 €</b></span><span>Σύνολο με ΦΠΑ <b>394,03 €</b></span></div>
         </div>
-
-        <div className="card">
-          <div className="row mb"><h2 style={{ margin: 0 }}>Παραστατικό</h2><span className="sp" />{buyer.afm || buyer.name ? <span className={"badge " + (otherBuyer ? "b-up" : "b-down")}>Αγοραστής: {buyer.name || "—"}{buyer.afm ? `, ΑΦΜ ${buyer.afm}` : ""}</span> : null}</div>
-          <div className="fgrid">
-            <Field label="Αριθμός" value={draft.invoice.number} onChange={v => setI("number", v)} />
-            <Field label="Ημερομηνία" type="date" value={draft.invoice.date} onChange={v => setI("date", v)} invalid={!draft.invoice.date} />
-            <Field label="Είδος" value={draft.invoice.type} onChange={v => setI("type", v)} />
-            <Field label="ΜΑΡΚ" value={draft.invoice.mark} onChange={v => setI("mark", v)} />
-            <Field label="Καθαρή αξία €" inputMode="decimal" value={draft.invoice.net} onChange={v => setI("net", v)} />
-            <Field label="ΦΠΑ €" inputMode="decimal" value={draft.invoice.vat} onChange={v => setI("vat", v)} />
-            <Field label="Σύνολο €" inputMode="decimal" value={draft.invoice.total} onChange={v => setI("total", v)} invalid={parseNum(draft.invoice.total) == null} />
-            <Field label="Τρόπος πληρωμής" value={draft.invoice.paymentMethod} onChange={v => setI("paymentMethod", v)} />
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="row mb"><h2 style={{ margin: 0 }}>Είδη ({draft.lines.length})</h2><span className="sp" /><span className="mut sm">Άθροισμα γραμμών: <b>{fmtEur(linesNet)}</b></span></div>
-          <LinesEditor lines={draft.lines} categories={categories} onChange={lines => setDraft(d => ({ ...d, lines }))} />
-        </div>
-
-        <div className="row">
-          <button className="btn" onClick={onCancel}>Ακύρωση</button>
-          <span className="sp" />
-          <button className="btn p" disabled={saving || blocked} onClick={onSave}>{saving ? "Αποθήκευση…" : editing ? "Αποθήκευση αλλαγών" : "Αποθήκευση τιμολογίου"}</button>
+        <div class="alertc">
+          <div class="t"><i></i>Τι ακρίβυνε σε αυτό το τιμολόγιο</div>
+          <div class="arow"><span class="n">Φέτα ΠΟΠ Δωδώνη</span><span class="d">+7,3%</span><span class="s">8,20 € → 8,80 € το κιλό</span><span class="e">+12,00 €</span></div>
+          <div class="arow"><span class="n">Κεφαλοτύρι</span><span class="d">+6,7%</span><span class="s">13,50 € → 14,40 € το κιλό</span><span class="e">+5,40 €</span></div>
+          <div class="arow dn"><span class="n">Γιαούρτι στραγγιστό</span><span class="d">−2,9%</span><span class="s">3,50 € → 3,40 € το κιλό</span><span class="e">−1,20 €</span></div>
         </div>
       </div>
     </div>
-  );
-}
+  </div>
+</header>
 
-/* =========================================================
-   Σελίδα σάρωσης
-   ========================================================= */
-function ReadingCard() {
-  const [sec, setSec] = useState(0);
-  useEffect(() => { const t = setInterval(() => setSec(s => s + 1), 1000); return () => clearInterval(t); }, []);
-  return (
-    <div className="card" style={{ textAlign: "center", padding: "60px 20px" }}>
-      <div className="spin" /><b>Διαβάζω το τιμολόγιο… {sec}″</b>
-      <div className="mut sm" style={{ marginTop: 6 }}>{sec < 15 ? "Συνήθως 5–15 δευτερόλεπτα" : "Το Gemini αργεί σήμερα, δοκιμάζω και εφεδρικό μοντέλο…"}</div>
-    </div>
-  );
-}
-function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onEditDone }) {
-  const [files, setFiles] = useState([]);       // {id, blob, mimeType, url, name}
-  const [phase, setPhase] = useState(editInv ? "review" : "pick");   // pick | reading | review | done
-  const [draft, setDraft] = useState(() => editInv ? invoiceToDraft(editInv, data.suppliers.find(x => x.id === editInv.supplierId)) : null);
-  const [readMeta, setReadMeta] = useState(null);
-  const [error, setError] = useState("");
-  const [over, setOver] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [doneInfo, setDoneInfo] = useState(null);
-  const camRef = useRef(), fileRef = useRef();
-
-  useEffect(() => () => files.forEach(f => f.url && URL.revokeObjectURL(f.url)), []); // eslint-disable-line
-  // Σε επεξεργασία: φόρτωσε τις αποθηκευμένες φωτογραφίες για προβολή δίπλα στη φόρμα
-  useEffect(() => {
-    if (!editInv) return;
-    (async () => {
-      const out = [];
-      for (const id of editInv.fileIds || []) { const f = await dbGet("files", id); if (f) out.push({ id, blob: f.blob, mimeType: f.mimeType, url: f.mimeType === "application/pdf" ? null : URL.createObjectURL(f.blob), name: "PDF", stored: true }); }
-      setFiles(out);
-    })();
-  }, [editInv && editInv.id]); // eslint-disable-line
-
-  async function addFiles(list) {
-    setError("");
-    const out = [];
-    for (const f of list) {
-      if (f.type === "application/pdf") {
-        if (f.size > 4 * 1024 * 1024) { setError("Το PDF είναι πάνω από 4 MB."); continue; }
-        out.push({ id: uid(), blob: f, mimeType: "application/pdf", url: null, name: f.name });
-      } else if (f.type.startsWith("image/")) {
-        try { const b = await compressImage(f); out.push({ id: uid(), blob: b, mimeType: "image/jpeg", url: URL.createObjectURL(b), name: f.name }); }
-        catch { setError("Δεν άνοιξε η εικόνα " + f.name + ". Δοκίμασε JPG ή PNG."); }
-      }
-    }
-    setFiles(fs => [...fs, ...out].slice(0, 6));
-  }
-
-  async function read() {
-    setPhase("reading"); setError("");
-    try {
-      const payload = { files: await Promise.all(files.map(async f => ({ mimeType: f.mimeType, data: await blobToBase64(f.blob) }))), ownAfm: settings.ownAfm || "", categories: settings.categories || [], businessType: settings.businessType || "" };
-      const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const ct = res.headers.get("content-type") || "";
-      if (!ct.includes("application/json")) throw new Error("Η ανάγνωση δουλεύει μόνο όταν η εφαρμογή τρέχει στο Netlify (ή με netlify dev).");
-      const j = await res.json();
-      if (!res.ok || j.error) throw new Error((j.error || "Σφάλμα ανάγνωσης") + (j.tried && j.tried.length ? ` [${j.tried.join(", ")}]` : ""));
-      setDraft(resultToDraft(j.result)); setReadMeta({ model: j.model, seconds: j.seconds }); setPhase("review");
-    } catch (e) { setError(e.message || String(e)); setPhase("pick"); }
-  }
-
-  function reset() { if (editInv) { onEditDone(editInv.id); return; } setReadMeta(null); files.forEach(f => f.url && URL.revokeObjectURL(f.url)); setFiles([]); setDraft(null); setPhase("pick"); setError(""); setDoneInfo(null); }
-
-  const matched = useMemo(() => {
-    if (!draft) return null;
-    const afm = draft.supplier.afm.replace(/\D/g, "");
-    return (afm && data.suppliers.find(s => s.afm === afm)) || (draft.supplier.name && data.suppliers.find(s => norm(s.name) === norm(draft.supplier.name))) || null;
-  }, [draft, data.suppliers]);
-  const duplicate = useMemo(() => {
-    if (!draft || !matched || !draft.invoice.number) return null;
-    return data.invoices.find(i => i.supplierId === matched.id && norm(i.number) === norm(draft.invoice.number) && (!editInv || i.id !== editInv.id)) || null;
-  }, [draft, matched, data.invoices]);
-
-  async function save() {
-    setSaving(true);
-    try {
-      if (editInv) { await saveDraft(draft, [], editInv); onEditDone(editInv.id); return; }
-      const r = await saveDraft(draft, files); setDoneInfo(r); setPhase("done");
-    }
-    catch (e) { setError("Αποτυχία αποθήκευσης: " + e.message); }
-    setSaving(false);
-  }
-
-  if (phase === "reading") return <ReadingCard />;
-
-  if (phase === "review") return (
-    <>
-      <h1>{editInv ? "Επεξεργασία τιμολογίου" : "Έλεγχος στοιχείων"}</h1>
-      <p className="sub">{editInv ? "Διόρθωσε ό,τι χρειάζεται και αποθήκευσε." : "Δες ότι διαβάστηκαν σωστά και διόρθωσε ό,τι χρειάζεται πριν την αποθήκευση."}</p>
-      {error && <div className="alert e mb">{error}</div>}
-      <ReviewForm ownAfm={/^\d{9}$/.test(settings.ownAfm || "") ? settings.ownAfm : ""} editing={!!editInv} readMeta={readMeta} categories={settings.categories || []} draft={draft} setDraft={setDraft} previews={files} duplicate={duplicate} matchedSupplier={matched} saving={saving} onSave={save} onCancel={reset} />
-    </>
-  );
-
-  if (phase === "done" && doneInfo) return (
-    <div className="grid" style={{ maxWidth: 640 }}>
-      <div className="alert ok">✓ Το τιμολόγιο {doneInfo.inv.number || ""} αποθηκεύτηκε ({fmtEur(doneInfo.inv.total)}).</div>
-      {doneInfo.alerts.length > 0 && (
-        <div className="card">
-          <h2>🔔 Αλλαγές τιμών σε αυτό το τιμολόγιο</h2>
-          <table><tbody>{doneInfo.alerts.map(a => (
-            <tr key={a.id}><td>{a.description}<div className="mut sm">{fmtPrice(a.oldPrice)} → <b>{fmtPrice(a.newPrice)}</b></div></td><td className="r"><ChangeBadge pct={a.pct} /></td></tr>
-          ))}</tbody></table>
-        </div>
-      )}
-      <div className="row">
-        <button className="btn p" onClick={reset}><Icon n="cam" /> Επόμενο τιμολόγιο</button>
-        <button className="btn" onClick={() => goInvoice(doneInfo.inv.id)}>Προβολή τιμολογίου</button>
-        {doneInfo.alerts.length > 0 && <button className="btn" onClick={goAlerts}>Όλες οι ειδοποιήσεις</button>}
+<main>
+  <section id="pos">
+    <div class="wrap">
+      <h2>Τρία βήματα, ένα λεπτό ανά τιμολόγιο</h2>
+      <p class="intro">Ο υπάλληλος παραλαμβάνει, βγάζει φωτογραφία, και τα υπόλοιπα γίνονται μόνα τους.</p>
+      <div class="steps">
+        <div class="step"><div class="num">Βήμα 1</div><h3>Φωτογράφισε ή ανέβασε</h3><p>Φωτογραφία από το κινητό ή PDF από το email. Δέχεται και πολυσέλιδα τιμολόγια.</p></div>
+        <div class="step"><div class="num">Βήμα 2</div><h3>Έλεγξε με μια ματιά</h3><p>Η εφαρμογή διαβάζει προμηθευτή, είδη, ποσότητες και τιμές. Εσύ βλέπεις το τιμολόγιο δίπλα και διορθώνεις ό,τι χρειάζεται.</p></div>
+        <div class="step"><div class="num">Βήμα 3</div><h3>Μαθαίνεις τι άλλαξε</h3><p>Κάθε είδος συγκρίνεται με την προηγούμενη αγορά. Αν ακρίβυνε, το βλέπεις αμέσως, με το ποσό που σου κοστίζει.</p></div>
       </div>
     </div>
-  );
+  </section>
 
-  return (
-    <>
-      <h1>Νέο τιμολόγιο</h1>
-      <p className="sub">Η εφαρμογή διαβάζει προμηθευτή, είδη και τιμές. Πριν την αποθήκευση τα ελέγχεις.</p>
-      {error && <div className="alert e mb">{error}</div>}
-      <div className={"drop" + (over ? " over" : "")}
-        onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
-        onDrop={e => { e.preventDefault(); setOver(false); addFiles([...e.dataTransfer.files]); }}>
-        <div className="drop-t">Φωτογράφισε ή ανέβασε το τιμολόγιο</div>
-        <div className="mut sm" style={{ marginBottom: 18 }}>JPG, PNG ή PDF</div>
-        <div className="row" style={{ justifyContent: "center" }}>
-          <button className="btn g" onClick={() => camRef.current.click()}><Icon n="cam" /> Φωτογραφία</button>
-          <button className="btn" onClick={() => fileRef.current.click()}><Icon n="file" /> Αρχείο / PDF</button>
-        </div>
-        <div className="mut sm" style={{ marginTop: 12 }}>ή σύρε τα αρχεία εδώ. Για πολυσέλιδο τιμολόγιο πρόσθεσε έως 6 σελίδες.</div>
-        <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={e => { addFiles([...e.target.files]); e.target.value = ""; }} />
-        <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple hidden onChange={e => { addFiles([...e.target.files]); e.target.value = ""; }} />
-        {files.length > 0 && (
-          <div className="thumbs" style={{ justifyContent: "center" }}>
-            {files.map((f, i) => (
-              <div className="thumb" key={f.id}>
-                {f.url ? <img src={f.url} alt="" /> : <span>PDF<br />{i + 1}</span>}
-                <button onClick={() => { f.url && URL.revokeObjectURL(f.url); setFiles(fs => fs.filter(x => x.id !== f.id)); }}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="row mt">
-        <button className="btn" onClick={() => { setDraft(emptyDraft()); setPhase("review"); }}>Χειροκίνητη καταχώρηση</button>
-        <span className="sp" />
-        <button className="btn p" disabled={!files.length} onClick={read}>Ανάγνωση τιμολογίου</button>
-      </div>
-    </>
-  );
-}
-
-/* =========================================================
-   Τιμολόγια
-   ========================================================= */
-function InvoiceModal({ inv, supplier, onClose, onDelete, openSupplier, onEdit }) {
-  const [urls, setUrls] = useState([]);
-  useEffect(() => {
-    let made = [];
-    (async () => {
-      for (const id of inv.fileIds || []) { const f = await dbGet("files", id); if (f) made.push({ url: URL.createObjectURL(f.blob), pdf: f.mimeType === "application/pdf" }); }
-      setUrls([...made]);
-    })();
-    return () => made.forEach(u => URL.revokeObjectURL(u.url));
-  }, [inv.id]);
-  return (
-    <Modal onClose={onClose}>
-      <div className="mhead">
-        <div><h1 style={{ marginBottom: 2 }}>{inv.type || "Τιμολόγιο"} {inv.number}</h1>
-          <div className="mut"><a href="#" onClick={e => { e.preventDefault(); openSupplier(supplier.id); }}>{supplier?.name}</a>, {fmtDate(inv.date)}{inv.mark ? <span className="sm">, ΜΑΡΚ {inv.mark}</span> : ""}</div></div>
-        <span className="sp" /><button className="x" onClick={onClose}>×</button>
-      </div>
-      {urls.length > 0 && <div className="imgs mb">{urls.map((u, i) => u.pdf ? <a key={i} className="btn" href={u.url} target="_blank" rel="noreferrer">Άνοιγμα PDF</a> : <a key={i} href={u.url} target="_blank" rel="noreferrer"><img src={u.url} alt="" /></a>)}</div>}
-      <div className="tbl">
-        <table>
-          <thead><tr><th>Κωδικός</th><th>Περιγραφή</th><th className="r">Ποσ.</th><th className="r">Τιμή μον.</th><th className="r">Έκπτ.</th><th className="r">Καθαρή</th><th className="r">ΦΠΑ</th></tr></thead>
-          <tbody>{inv.lines.map((l, i) => (
-            <tr key={i}><td className="mut sm">{l.code}</td><td>{l.description}</td><td className="r nw">{fmtQty(l.quantity)} {l.unit}</td><td className="r nw">{fmtPrice(l.unitPrice)}</td><td className="r">{l.discountPct ? l.discountPct + "%" : ""}</td><td className="r nw">{fmtEur(l.net)}</td><td className="r">{l.vatPct != null ? l.vatPct + "%" : ""}</td></tr>
-          ))}</tbody>
-        </table>
-      </div>
-      <div className="row mt" style={{ justifyContent: "flex-end", gap: 24 }}>
-        <span className="mut">Καθαρή <b style={{ color: "var(--text)" }}>{fmtEur(inv.net)}</b></span>
-        <span className="mut">ΦΠΑ <b style={{ color: "var(--text)" }}>{fmtEur(inv.vat)}</b></span>
-        <span style={{ fontSize: 18 }}>Σύνολο <b>{fmtEur(inv.total)}</b></span>
-      </div>
-      <div className="row mt"><button className="btn" onClick={() => onEdit(inv.id)}>Επεξεργασία</button><span className="sp" /><button className="btn d" onClick={() => { if (confirm("Διαγραφή αυτού του τιμολογίου;")) onDelete(inv.id); }}>Διαγραφή</button></div>
-    </Modal>
-  );
-}
-
-function InvoicesTable({ invoices, supById, onOpen, showSupplier = true }) {
-  if (!invoices.length) return <div className="empty">Δεν υπάρχουν τιμολόγια σε αυτή την περίοδο.</div>;
-  return (
-    <div className="tbl"><table>
-      <thead><tr><th>Ημ/νία</th><th>Αριθμός</th>{showSupplier && <th>Προμηθευτής</th>}<th className="r hide-m">Καθαρή</th><th className="r hide-m">ΦΠΑ</th><th className="r">Σύνολο</th></tr></thead>
-      <tbody>
-        {invoices.map(i => (
-          <tr key={i.id} className="click" onClick={() => onOpen(i.id)}>
-            <td className="nw">{fmtDate(i.date)}</td><td>{i.number || "—"}</td>
-            {showSupplier && <td className="sup-name">{supById[i.supplierId]?.name}</td>}
-            <td className="r nw hide-m">{fmtEur(i.net)}</td><td className="r nw hide-m">{fmtEur(i.vat)}</td><td className="r nw"><b>{fmtEur(i.total)}</b></td>
-          </tr>
-        ))}
-        <tr className="totals"><td colSpan={showSupplier ? 3 : 2}>Σύνολο ({invoices.length})</td><td className="r nw hide-m">{fmtEur(sum(invoices, i => i.net))}</td><td className="r nw hide-m">{fmtEur(sum(invoices, i => i.vat))}</td><td className="r nw">{fmtEur(sum(invoices, i => i.total))}</td></tr>
-      </tbody>
-    </table></div>
-  );
-}
-
-function exportCSV(invoices, supById, name) {
-  const n = v => v == null ? "" : String(v).replace(".", ",");
-  const rows = [["Ημερομηνία", "Αριθμός", "Είδος", "Προμηθευτής", "ΑΦΜ", "Καθαρή αξία", "ΦΠΑ", "Σύνολο", "ΜΑΡΚ"]];
-  invoices.forEach(i => { const s = supById[i.supplierId] || {}; rows.push([fmtDate(i.date), i.number, i.type, s.name, s.afm, n(i.net), n(i.vat), n(i.total), i.mark]); });
-  const csv = "﻿" + rows.map(r => r.map(c => `"${String(c ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
-  download(name, csv, "text/csv;charset=utf-8");
-}
-
-function InvoicesPage({ data, supById, openInvoice }) {
-  const [period, setPeriod] = useState({ preset: "month" });
-  const [sup, setSup] = useState("");
-  const [q, setQ] = useState("");
-  const r = periodRange(period);
-  const list = data.invoices
-    .filter(i => inRange(i.date, r) && (!sup || i.supplierId === sup) && (!q || norm(i.number + " " + (supById[i.supplierId]?.name || "") + " " + i.lines.map(l => l.description).join(" ")).includes(norm(q))))
-    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
-  return (
-    <>
-      <h1>Τιμολόγια</h1><p className="sub">Αναζήτηση ανά περίοδο, προμηθευτή ή είδος.</p>
-      <div className="card grid">
-        <PeriodFilter value={period} onChange={setPeriod} />
-        <div className="row">
-          <select className="in" style={{ maxWidth: 260 }} value={sup} onChange={e => setSup(e.target.value)}>
-            <option value="">Όλοι οι προμηθευτές</option>
-            {[...data.suppliers].sort((a, b) => a.name.localeCompare(b.name, "el")).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <input className="in" style={{ maxWidth: 260 }} placeholder="Αριθμός ή είδος…" value={q} onChange={e => setQ(e.target.value)} />
-          <span className="sp" />
-          <button className="btn" disabled={!list.length} onClick={() => exportCSV(list, supById, `timologia_${r.from}_${r.to}.csv`.replace(/0000-01-01|9999-12-31/g, "ola"))}>Εξαγωγή Excel (CSV)</button>
-        </div>
-        <InvoicesTable invoices={list} supById={supById} onOpen={openInvoice} />
-      </div>
-    </>
-  );
-}
-
-/* =========================================================
-   Προμηθευτές
-   ========================================================= */
-function SupplierEdit({ supplier, onSave, onClose }) {
-  const [s, setS] = useState(supplier);
-  const set = (k, v) => setS(x => ({ ...x, [k]: v }));
-  return (
-    <Modal small onClose={onClose}>
-      <div className="mhead"><h1>Στοιχεία προμηθευτή</h1><span className="sp" /><button className="x" onClick={onClose}>×</button></div>
-      <div className="fgrid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        <Field label="Επωνυμία" wide value={s.name} onChange={v => set("name", v)} />
-        <Field label="ΑΦΜ" value={s.afm} onChange={v => set("afm", v.replace(/\D/g, ""))} invalid={s.afm && !validAfm(s.afm)} />
-        <Field label="ΔΟΥ" value={s.doy} onChange={v => set("doy", v)} />
-        <Field label="Διεύθυνση" wide value={s.address} onChange={v => set("address", v)} />
-        <Field label="Τηλέφωνο" value={s.phone} onChange={v => set("phone", v)} />
-        <Field label="Email" value={s.email} onChange={v => set("email", v)} />
-        <Field label="Σημειώσεις (π.χ. όροι πληρωμής, πωλητής)" wide value={s.notes} onChange={v => set("notes", v)} />
-      </div>
-      <div className="row mt"><span className="sp" /><button className="btn" onClick={onClose}>Άκυρο</button><button className="btn p" onClick={() => onSave(s)}>Αποθήκευση</button></div>
-    </Modal>
-  );
-}
-
-function ProductsTable({ products, supById, onOpen, showSupplier }) {
-  if (!products.length) return <div className="empty">Δεν υπάρχουν είδη ακόμα.</div>;
-  return (
-    <div className="tbl"><table>
-      <thead><tr><th>Είδος</th>{showSupplier && <th>Προμηθευτής</th>}<th className="r">Τελευταία τιμή</th><th className="r hide-m">Προηγούμενη</th><th className="r">Μεταβολή</th><th className="r hide-m">Τελ. αγορά</th></tr></thead>
-      <tbody>{products.map(p => (
-        <tr key={p.key} className="click" onClick={() => onOpen(p.key)}>
-          <td>{p.description}<div className="mut sm">{[p.code && "Κωδ. " + p.code, p.unit].filter(Boolean).join(", ")}</div></td>
-          {showSupplier && <td className="sm">{supById[p.supplierId]?.name}</td>}
-          <td className="r nw"><b>{fmtPrice(p.last.price)}</b></td>
-          <td className="r nw mut hide-m">{p.prev ? fmtPrice(p.prev.price) : "—"}</td>
-          <td className="r"><ChangeBadge pct={p.change} /></td>
-          <td className="r nw mut hide-m">{fmtDate(p.last.date)}</td>
-        </tr>
-      ))}</tbody>
-    </table></div>
-  );
-}
-
-function SupplierDetail({ supplier, data, products, supById, openInvoice, openProduct, onBack, onUpdate }) {
-  const [period, setPeriod] = useState({ preset: "year" });
-  const [edit, setEdit] = useState(false);
-  const r = periodRange(period);
-  const all = data.invoices.filter(i => i.supplierId === supplier.id);
-  const list = all.filter(i => inRange(i.date, r)).sort((a, b) => b.date.localeCompare(a.date));
-  const prods = products.filter(p => p.supplierId === supplier.id).sort((a, b) => b.last.date.localeCompare(a.last.date));
-  const rising = prods.filter(p => p.change > 0.05).length;
-  return (
-    <>
-      <button className="btn sm mb" onClick={onBack}><Icon n="back" /> Προμηθευτές</button>
-      <div className="row mb" style={{ alignItems: "flex-start" }}>
-        <div><h1>{supplier.name}</h1><div className="mut">{supplier.afm ? "ΑΦΜ " + supplier.afm : "Χωρίς ΑΦΜ"}{supplier.doy ? ", ΔΟΥ " + supplier.doy : ""}</div></div>
-        <span className="sp" /><button className="btn" onClick={() => setEdit(true)}>Επεξεργασία</button>
-      </div>
-      <div className="kpis">
-        <div className="kpi"><div className="l">Αγορές περιόδου</div><div className="v">{fmtEur(sum(list, i => i.total))}</div><div className="s">{list.length} τιμολόγια</div></div>
-        <div className="kpi"><div className="l">Αγορές από την αρχή</div><div className="v">{fmtEur(sum(all, i => i.total))}</div><div className="s">{all.length} τιμολόγια</div></div>
-        <div className={"kpi" + (rising ? " alert-k" : "")}><div className="l">Είδη σε αύξηση</div><div className="v">{rising}</div><div className="s">από {prods.length} είδη</div></div>
-        <div className="kpi"><div className="l">Επικοινωνία</div><div style={{ marginTop: 6, fontWeight: 600 }}>{supplier.phone ? <a href={"tel:" + supplier.phone}>{supplier.phone}</a> : "Χωρίς τηλέφωνο"}</div><div className="s" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{supplier.email ? <a href={"mailto:" + supplier.email}>{supplier.email}</a> : supplier.address}</div></div>
-      </div>
-      {supplier.notes && <div className="alert i mb">{supplier.notes}</div>}
-      <div className="card grid mb">
-        <div className="row"><h2 style={{ margin: 0 }}>Καρτέλα τιμολογίων</h2><span className="sp" /><button className="btn sm" disabled={!list.length} onClick={() => exportCSV(list, supById, `${norm(supplier.name).slice(0, 30)}_${r.from}_${r.to}.csv`.replace(/0000-01-01|9999-12-31/g, "ola"))}>Εξαγωγή CSV</button></div>
-        <PeriodFilter value={period} onChange={setPeriod} />
-        <InvoicesTable invoices={list} supById={supById} onOpen={openInvoice} showSupplier={false} />
-      </div>
-      <div className="card">
-        <h2>Είδη και τιμές</h2>
-        {!prods.length ? <div className="empty">Δεν υπάρχουν είδη ακόμα.</div> :
-          <CatGroups items={prods} summary={prodSummary}>{l => <ProductsTable products={l} supById={supById} onOpen={openProduct} />}</CatGroups>}
-      </div>
-      {edit && <SupplierEdit supplier={{ notes: "", ...supplier }} onClose={() => setEdit(false)} onSave={async s => { await onUpdate(s); setEdit(false); }} />}
-    </>
-  );
-}
-
-function SuppliersPage({ data, openSupplier }) {
-  const [q, setQ] = useState("");
-  const yearR = periodRange({ preset: "year" });
-  const rows = data.suppliers.map(s => {
-    const inv = data.invoices.filter(i => i.supplierId === s.id);
-    const last = inv.reduce((m, i) => i.date > m ? i.date : m, "");
-    return { s, count: inv.length, total: sum(inv, i => i.total), year: sum(inv.filter(i => inRange(i.date, yearR)), i => i.total), last };
-  }).filter(r => !q || norm(r.s.name + " " + r.s.afm).includes(norm(q))).sort((a, b) => b.year - a.year || b.total - a.total);
-  return (
-    <>
-      <h1>Προμηθευτές</h1><p className="sub">Δημιουργούνται αυτόματα από τα τιμολόγια, με βάση το ΑΦΜ.</p>
-      <div className="card grid">
-        <input className="in" style={{ maxWidth: 320 }} placeholder="Αναζήτηση επωνυμίας ή ΑΦΜ…" value={q} onChange={e => setQ(e.target.value)} />
-        {!rows.length ? <div className="empty">Δεν υπάρχουν προμηθευτές ακόμα. Σκάναρε το πρώτο τιμολόγιο.</div> : (
-          <div className="tbl"><table>
-            <thead><tr><th>Προμηθευτής</th><th className="hide-m">ΑΦΜ</th><th className="r">Φέτος</th><th className="r hide-m">Συνολικά</th><th className="r hide-m">Τιμολόγια</th><th className="r hide-m">Τελ. τιμολόγιο</th></tr></thead>
-            <tbody>{rows.map(({ s, count, total, year, last }) => (
-              <tr key={s.id} className="click" onClick={() => openSupplier(s.id)}>
-                <td className="sup-name">{s.name}</td><td className="mut hide-m">{s.afm}</td>
-                <td className="r nw"><b>{fmtEur(year)}</b></td><td className="r nw hide-m">{fmtEur(total)}</td><td className="r hide-m">{count}</td><td className="r nw mut hide-m">{fmtDate(last)}</td>
-              </tr>
-            ))}</tbody>
-          </table></div>
-        )}
-      </div>
-    </>
-  );
-}
-
-/* =========================================================
-   Ομαδοποίηση ανά κατηγορία
-   ========================================================= */
-// Κλειστές ομάδες με σύνοψη στην κεφαλίδα. Ανοίγουν όλες όταν υπάρχει αναζήτηση.
-function CatGroups({ items, forceOpen, summary, children }) {
-  const labels = [...new Set(items.map(x => x.category || ""))].sort((a, b) => !a ? 1 : !b ? -1 : a.localeCompare(b, "el"));
-  if (!labels.length) return null;
-  return (
-    <div className="grps">
-      {labels.map(c => {
-        const list = items.filter(x => (x.category || "") === c);
-        return (
-          <details key={c + (forceOpen ? "|o" : "|c")} className="grp" open={forceOpen || labels.length === 1}>
-            <summary>
-              <span className="gl" style={c ? {} : { color: "var(--muted)" }}>{catLabel(c)}</span>
-              <span className="gc">{list.length}</span>
-              <span className="sp" />{summary(list)}
-              <span className="chev">›</span>
-            </summary>
-            <div className="gbody">{children(list)}</div>
-          </details>
-        );
-      })}
-    </div>
-  );
-}
-
-function CatSelect({ value, categories, onChange }) {
-  return (
-    <select className="in" style={{ maxWidth: 260 }} value={value || ""} onChange={e => {
-      let v = e.target.value;
-      if (v === "__new") { v = (prompt("Όνομα νέας κατηγορίας:") || "").trim(); if (!v) return; }
-      onChange(v);
-    }}>
-      <option value="">{NO_CAT}</option>
-      {categories.map(c => <option key={c} value={c}>{c}</option>)}
-      {value && !categories.includes(value) && <option value={value}>{value}</option>}
-      <option value="__new">+ Νέα κατηγορία…</option>
-    </select>
-  );
-}
-
-const prodSummary = list => {
-  const up = list.filter(p => p.change > 0.05).length, down = list.filter(p => p.change < -0.05).length;
-  return <span className="row" style={{ gap: 6 }}>{up > 0 && <span className="badge b-up">▲ {up}</span>}{down > 0 && <span className="badge b-down">▼ {down}</span>}</span>;
-};
-
-/* =========================================================
-   Προϊόντα
-   ========================================================= */
-function ProductModal({ product, supplier, onClose, openInvoice, setCategory, categories }) {
-  const h = product.history;
-  return (
-    <Modal onClose={onClose}>
-      <div className="mhead">
-        <div><h1 style={{ marginBottom: 2 }}>{product.description}</h1><div className="mut">{[supplier?.name, product.code && "Κωδ. " + product.code, product.unit].filter(Boolean).join(", ")}</div></div>
-        <span className="sp" /><button className="x" onClick={onClose}>×</button>
-      </div>
-      <div className="row mb"><span className="mut sm">Κατηγορία</span><CatSelect value={product.category} categories={categories} onChange={v => setCategory(product.key, v)} /></div>
-      <div className="grid g4 mb">
-        <div className="stat"><div className="l">Τελευταία</div><div className="v">{fmtPrice(product.last.price)}</div></div>
-        <div className="stat"><div className="l">Από την πρώτη αγορά</div><div className="v"><ChangeBadge pct={pctChange(product.first.price, product.last.price)} /></div></div>
-        <div className="stat"><div className="l">Χαμηλότερη</div><div className="v">{fmtPrice(product.min)}</div></div>
-        <div className="stat"><div className="l">Υψηλότερη</div><div className="v">{fmtPrice(product.max)}</div></div>
-      </div>
-      <div className="card mb" style={{ padding: 10 }}><Sparkline points={h} /></div>
-      <div className="tbl"><table>
-        <thead><tr><th>Ημ/νία</th><th>Τιμολόγιο</th><th className="r">Ποσότητα</th><th className="r">Τιμή μον.</th><th className="r">Μεταβολή</th></tr></thead>
-        <tbody>{[...h].reverse().map((x, i, arr) => (
-          <tr key={i} className="click" onClick={() => openInvoice(x.invoiceId)}>
-            <td className="nw">{fmtDate(x.date)}</td><td>{x.invoiceNo}</td><td className="r">{fmtQty(x.qty)}</td><td className="r nw">{fmtPrice(x.price)}</td>
-            <td className="r">{arr[i + 1] ? <ChangeBadge pct={pctChange(arr[i + 1].price, x.price)} /> : ""}</td>
-          </tr>
-        ))}</tbody>
-      </table></div>
-    </Modal>
-  );
-}
-
-function ProductsPage({ products, supById, openProduct, autoClassify }) {
-  const [busy, setBusy] = useState(false);
-  const uncat = products.filter(p => !p.category);
-  const [q, setQ] = useState("");
-  const [only, setOnly] = useState("all");
-  const [sup, setSup] = useState("");
-  const list = products
-    .filter(p => !q || norm(p.description + " " + p.code + " " + (supById[p.supplierId]?.name || "")).includes(norm(q)))
-    .filter(p => !sup || p.supplierId === sup)
-    .filter(p => only === "all" || (only === "up" ? p.change > 0.05 : p.change < -0.05))
-    .sort((a, b) => a.description.localeCompare(b.description, "el"));
-  const sups = [...new Set(products.map(p => p.supplierId))].map(id => supById[id]).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, "el"));
-  return (
-    <>
-      <h1>Είδη & τιμές</h1><p className="sub">Τα είδη ανά κατηγορία. Άνοιξε μια κατηγορία για να δεις τιμές και μεταβολές.</p>
-      {uncat.length > 0 && (
-        <div className="alert i mb" style={{ alignItems: "center" }}>
-          <span>{uncat.length} {uncat.length === 1 ? "είδος δεν έχει" : "είδη δεν έχουν"} κατηγορία.</span><span className="sp" />
-          <button className="btn sm p" disabled={busy} onClick={async () => { setBusy(true); await autoClassify(uncat); setBusy(false); }}>{busy ? "Κατάταξη…" : "Αυτόματη κατηγοριοποίηση"}</button>
-        </div>
-      )}
-      <div className="card grid">
-        <div className="row">
-          <input className="in" style={{ maxWidth: 280 }} placeholder="Αναζήτηση είδους ή κωδικού…" value={q} onChange={e => setQ(e.target.value)} />
-          <select className="in" style={{ maxWidth: 240 }} value={sup} onChange={e => setSup(e.target.value)}>
-            <option value="">Όλοι οι προμηθευτές</option>{sups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <div className="chips">{[["all", "Όλα"], ["up", "Σε αύξηση"], ["down", "Σε μείωση"]].map(([k, l]) => <button key={k} className={"chip" + (only === k ? " on" : "")} onClick={() => setOnly(k)}>{l}</button>)}</div>
-        </div>
-        {!list.length ? <div className="empty">{products.length ? "Κανένα είδος με αυτά τα φίλτρα." : "Δεν υπάρχουν είδη ακόμα."}</div> :
-          <CatGroups items={list} forceOpen={!!q} summary={prodSummary}>
-            {l => <ProductsTable products={l} supById={supById} onOpen={openProduct} showSupplier={!sup} />}
-          </CatGroups>}
-      </div>
-    </>
-  );
-}
-
-/* =========================================================
-   Ειδοποιήσεις
-   ========================================================= */
-function AlertsTable({ list, supById, openProduct }) {
-  return (
-    <div className="tbl"><table>
-      <thead><tr><th>Είδος</th><th className="hide-m">Προμηθευτής</th><th className="r">Από → σε</th><th className="r">Μεταβολή</th><th className="r hide-m">Επίπτωση*</th></tr></thead>
-      <tbody>{list.map(a => (
-        <tr key={a.id} className="click" style={a.read ? {} : { background: "#fffdf5" }} onClick={() => openProduct(a.productKey)}>
-          <td>{!a.read && <span className="badge b-warn" style={{ marginRight: 6 }}>Νέα</span>}{a.description}<div className="mut sm">{fmtDate(a.oldDate)} → {fmtDate(a.newDate)}</div></td>
-          <td className="sm hide-m">{supById[a.supplierId]?.name}</td>
-          <td className="r nw sm">{fmtPrice(a.oldPrice)} → <b>{fmtPrice(a.newPrice)}</b></td>
-          <td className="r"><ChangeBadge pct={a.pct} /></td>
-          <td className="r nw hide-m">{a.qty ? fmtEur((a.newPrice - a.oldPrice) * a.qty) : "—"}</td>
-        </tr>
-      ))}</tbody>
-    </table></div>
-  );
-}
-
-function AlertsPage({ data, supById, openProduct, markAllRead, settings }) {
-  const [only, setOnly] = useState("up");
-  const all = [...data.alerts].sort((a, b) => b.newDate.localeCompare(a.newDate) || b.createdAt - a.createdAt);
-  const list = all.filter(a => only === "all" || (only === "up" ? a.pct > 0 : only === "down" ? a.pct < 0 : !a.read));
-  const unread = all.filter(a => !a.read).length;
-  const impact = sum(all.filter(a => a.pct > 0 && a.qty), a => (a.newPrice - a.oldPrice) * a.qty);
-  const summary = l => {
-    const n = l.filter(a => !a.read).length, up = l.filter(a => a.pct > 0);
-    const avg = up.length ? sum(up, a => a.pct) / up.length : null;
-    return <span className="row" style={{ gap: 6 }}>{n > 0 && <span className="badge b-warn">{n} νέες</span>}{avg != null && <span className="badge b-up">μ.ό. +{avg.toLocaleString("el-GR", { maximumFractionDigits: 1 })}%</span>}</span>;
-  };
-  return (
-    <>
-      <div className="row" style={{ alignItems: "flex-start" }}>
-        <div><h1>Ειδοποιήσεις τιμών</h1><p className="sub">Αλλαγές από {settings.threshold}% και πάνω σε σχέση με την προηγούμενη αγορά, ανά κατηγορία.</p></div>
-        <span className="sp" />{unread > 0 && <button className="btn" onClick={markAllRead}>Σήμανση όλων ως αναγνωσμένες</button>}
-      </div>
-      {all.length > 0 && (
-        <div className="kpis k3">
-          <div className="kpi alert-k"><div className="l">Αυξήσεις</div><div className="v">{all.filter(a => a.pct > 0).length}</div></div>
-          <div className="kpi"><div className="l">Μειώσεις</div><div className="v" style={{ color: "var(--down)" }}>{all.filter(a => a.pct < 0).length}</div></div>
-          <div className="kpi"><div className="l">Επιπλέον κόστος από αυξήσεις*</div><div className="v">{fmtEur(impact)}</div></div>
-        </div>
-      )}
-      <div className="card grid">
-        {all.length > 0 && <div className="chips">{[["up", "Αυξήσεις"], ["down", "Μειώσεις"], ["new", `Νέες (${unread})`], ["all", "Όλες"]].map(([k, l]) => <button key={k} className={"chip" + (only === k ? " on" : "")} onClick={() => setOnly(k)}>{l}</button>)}</div>}
-        {!all.length ? <div className="empty">Καμία αλλαγή τιμής ακόμα. Οι ειδοποιήσεις εμφανίζονται όταν ένα είδος αγοραστεί ξανά σε διαφορετική τιμή.</div>
-          : !list.length ? <div className="empty">Καμία ειδοποίηση με αυτό το φίλτρο.</div>
-          : <CatGroups items={list} summary={summary}>{l => <AlertsTable list={l} supById={supById} openProduct={openProduct} />}</CatGroups>}
-        {all.length > 0 && <div className="mut sm">* Διαφορά κόστους για την ποσότητα του τιμολογίου όπου άλλαξε η τιμή.</div>}
-      </div>
-    </>
-  );
-}
-
-/* =========================================================
-   Αρχική
-   ========================================================= */
-function Dashboard({ data, supById, products, go, openSupplier, openProduct, openInvoice, settings }) {
-  const now = new Date();
-  const m = periodRange({ preset: "month" }), pm = periodRange({ preset: "prev" });
-  const thisM = data.invoices.filter(i => inRange(i.date, m)), prevM = data.invoices.filter(i => inRange(i.date, pm));
-  const tot = sum(thisM, i => i.total), ptot = sum(prevM, i => i.total);
-  const vsPrev = ptot ? (tot - ptot) / ptot * 100 : null;
-  const bySup = {}; thisM.forEach(i => bySup[i.supplierId] = (bySup[i.supplierId] || 0) + (i.total || 0));
-  const top = Object.entries(bySup).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const ups = data.alerts.filter(a => a.pct > 0);
-  const upsM = ups.filter(a => inRange(a.newDate, m));
-  const extra = sum(upsM.filter(a => a.qty), a => (a.newPrice - a.oldPrice) * a.qty);
-  // «Τι ακρίβυνε»: οι πιο πρόσφατες αυξήσεις, με τη μεγαλύτερη επίπτωση πρώτα
-  const rises = [...ups].sort((a, b) => b.newDate.localeCompare(a.newDate) || ((b.newPrice - b.oldPrice) * (b.qty || 1)) - ((a.newPrice - a.oldPrice) * (a.qty || 1))).slice(0, 6);
-  // Αγορές ανά μήνα (6 μήνες)
-  const months = [...Array(6)].map((_, k) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 5 + k, 1);
-    const r = { from: toISO(d), to: toISO(new Date(d.getFullYear(), d.getMonth() + 1, 0)) };
-    return { label: d.toLocaleDateString("el-GR", { month: "short" }).replace(".", ""), long: d.toLocaleDateString("el-GR", { month: "long", year: "numeric" }), v: sum(data.invoices.filter(i => inRange(i.date, r)), i => i.total), cur: k === 5 };
-  });
-  const maxM = Math.max(...months.map(x => x.v), 1);
-  const recent = [...data.invoices].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt).slice(0, 5);
-  const monthName = now.toLocaleDateString("el-GR", { month: "long" });
-  const unread = data.alerts.filter(a => !a.read).length;
-
-  if (!data.invoices.length) return (
-    <div className="card" style={{ padding: "56px 28px", maxWidth: 640 }}>
-      <h1>Ξεκίνα με το πρώτο τιμολόγιο</h1>
-      <p className="sub" style={{ maxWidth: 480, margin: "10px 0 24px" }}>Φωτογράφισέ το ή ανέβασε το PDF. Η εφαρμογή διαβάζει προμηθευτή, είδη και τιμές, φτιάχνει την καρτέλα του προμηθευτή και σε ειδοποιεί όταν κάτι ακριβαίνει.</p>
-      <button className="btn g" onClick={() => go("scan")}><Icon n="cam" /> Σάρωση τιμολογίου</button>
-    </div>
-  );
-
-  return (
-    <>
-      <div className="phead">
-        <div><h1>{settings.businessName || "Επισκόπηση"}</h1><p className="sub">Αγορές και τιμές, {now.toLocaleDateString("el-GR", { month: "long", year: "numeric" })}</p></div>
-        <span className="sp" />
-        <button className="btn g" onClick={() => go("scan")}><Icon n="cam" /> Νέο τιμολόγιο</button>
-      </div>
-
-      <div className="kpis">
-        <div className="kpi"><div className="l">Αγορές {monthName}</div><div className="v">{fmtEur(tot)}</div>
-          <div className="s">{vsPrev == null ? `${thisM.length} τιμολόγια` : <>{vsPrev >= 0 ? "+" : "−"}{Math.abs(vsPrev).toLocaleString("el-GR", { maximumFractionDigits: 0 })}% από τον προηγούμενο μήνα</>}</div></div>
-        <div className="kpi"><div className="l">Τιμολόγια μήνα</div><div className="v">{thisM.length}</div><div className="s">από {Object.keys(bySup).length} προμηθευτές</div></div>
-        <div className={"kpi" + (upsM.length ? " alert-k" : "")}><div className="l">Αυξήσεις τιμών μήνα</div><div className="v">{upsM.length}</div><div className="s">{upsM.length ? (upsM.filter(a => !a.read).length ? `${upsM.filter(a => !a.read).length} δεν τις έχεις δει` : "τις έχεις δει όλες") : "καμία αυτόν τον μήνα"}</div></div>
-        <div className={"kpi" + (extra > 0 ? " alert-k" : "")}><div className="l">Επιπλέον κόστος μήνα</div><div className="v">{fmtEur(extra)}</div><div className="s">λόγω αυξήσεων</div></div>
-      </div>
-
-      <div className="split mb">
-        <div className="card">
-          <div className="row" style={{ marginBottom: 4 }}><h2 style={{ margin: 0 }}>Τι ακρίβυνε</h2><span className="sp" />{ups.length > 0 && <button className="btn sm" onClick={() => go("alerts")}>Όλες οι αυξήσεις</button>}</div>
-          {!rises.length ? <div className="empty">Καμία αύξηση τιμής ακόμα. Θα εμφανιστούν εδώ όταν ένα είδος έρθει ακριβότερα από την προηγούμενη φορά.</div> :
-            rises.map(a => (
-              <div key={a.id} className="rise" onClick={() => openProduct(a.productKey)}>
-                <div style={{ minWidth: 0 }}><div className="rn">{a.description}</div><div className="rs">{supById[a.supplierId]?.name}, {fmtDate(a.newDate)}</div></div>
-                <div className="rp hide-m">{fmtPrice(a.oldPrice)} → <b>{fmtPrice(a.newPrice)}</b></div>
-                <div className="rd">+{a.pct.toLocaleString("el-GR", { maximumFractionDigits: 1 })}%{a.qty ? <small>+{fmtEur((a.newPrice - a.oldPrice) * a.qty)}</small> : null}</div>
-              </div>
-            ))}
-        </div>
-        <div className="grid">
-          <div className="card">
-            <h2>Αγορές ανά μήνα</h2>
-            <div className="bars" role="img" aria-label={months.map(x => `${x.long}: ${fmtEur(x.v)}`).join(", ")}>
-              {months.map(x => (
-                <div key={x.long} className={"bar" + (x.cur ? " cur" : "")} title={`${x.long}: ${fmtEur(x.v)}`}>
-                  {x.cur && <em>{fmtEur(x.v)}</em>}
-                  <i style={{ height: `${Math.max(x.v / maxM * 100, 1.5)}%` }} />
-                  <span>{x.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="card">
-            <h2>Μεγαλύτεροι προμηθευτές, {monthName}</h2>
-            {!top.length ? <div className="mut sm">Κανένα τιμολόγιο αυτόν τον μήνα.</div> : top.map(([id, v]) => (
-              <div key={id} className="share" onClick={() => openSupplier(id)}>
-                <span className="sup-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{supById[id]?.name}</span>
-                <span className="money">{fmtEur(v)}</span>
-                <span className="bg"><i style={{ width: `${tot ? v / tot * 100 : 0}%` }} /></span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="row" style={{ marginBottom: 6 }}><h2 style={{ margin: 0 }}>Τελευταία τιμολόγια</h2><span className="sp" /><button className="btn sm" onClick={() => go("invoices")}>Όλα τα τιμολόγια</button></div>
-        <div className="tbl"><table><tbody>{recent.map(i => (
-          <tr key={i.id} className="click" onClick={() => openInvoice(i.id)}>
-            <td><div className="sup-name">{supById[i.supplierId]?.name}</div><div className="mut sm">{fmtDate(i.date)}{i.number ? `, αρ. ${i.number}` : ""}</div></td><td className="r nw money">{fmtEur(i.total)}</td>
-          </tr>
-        ))}</tbody></table></div>
-      </div>
-    </>
-  );
-}
-
-/* =========================================================
-   Ρυθμίσεις
-   ========================================================= */
-function SettingsPage({ settings, saveSettings, data, reload, toast, products, renameCategory }) {
-  const [s, setS] = useState(settings);
-  const impRef = useRef();
-  async function doExport() {
-    const meta = await dbAll("meta");
-    download(`timologia_backup_${todayISO()}.json`, JSON.stringify({ app: "timologia", version: 1, exportedAt: new Date().toISOString(), suppliers: data.suppliers, invoices: data.invoices.map(i => ({ ...i, fileIds: [] })), alerts: data.alerts, meta }, null, 1), "application/json");
-  }
-  async function doImport(file) {
-    try {
-      const j = JSON.parse(await file.text());
-      if (j.app !== "timologia") throw new Error("Δεν είναι αρχείο αντιγράφου αυτής της εφαρμογής.");
-      for (const k of ["suppliers", "invoices", "alerts", "meta"]) for (const v of j[k] || []) await dbPut(k, v);
-      await reload(); toast("Η επαναφορά ολοκληρώθηκε");
-    } catch (e) { alert("Αποτυχία: " + e.message); }
-  }
-  async function wipe() {
-    if (!confirm("Θα διαγραφούν ΟΛΑ τα δεδομένα από αυτή τη συσκευή. Συνέχεια;")) return;
-    for (const st of STORES) await dbClear(st);
-    await reload(); toast("Τα δεδομένα διαγράφηκαν");
-  }
-  return (
-    <>
-      <h1>Ρυθμίσεις</h1><p className="sub">Στοιχεία επιχείρησης, ειδοποιήσεις και αντίγραφα ασφαλείας.</p>
-      <div className="card mb">
-        <h2>Η επιχείρησή μου</h2>
-        <div className="fgrid">
-          <Field label="Επωνυμία" wide value={s.businessName} onChange={v => setS(x => ({ ...x, businessName: v }))} invalid={!(s.businessName || "").trim()} />
-          <Field label="Είδος επιχείρησης" value={s.businessType} placeholder="π.χ. Ταβέρνα, Κομμωτήριο" onChange={v => setS(x => ({ ...x, businessType: v }))} hint="Βοηθά στη δημιουργία κατάλληλων κατηγοριών" />
-          <Field label="ΑΦΜ (υποχρεωτικό)" value={s.ownAfm} inputMode="numeric" onChange={v => setS(x => ({ ...x, ownAfm: v.replace(/\D/g, "").slice(0, 9) }))} invalid={!validAfm(s.ownAfm || "")} hint={validAfm(s.ownAfm || "") ? "Μόνο τιμολόγια με αυτό το ΑΦΜ αγοραστή μετράνε στα έξοδά σου" : "Χρειάζεται έγκυρο ΑΦΜ 9 ψηφίων"} />
-          <Field label="Ειδοποίηση από μεταβολή %" inputMode="decimal" value={numStr(s.threshold)} onChange={v => setS(x => ({ ...x, threshold: v }))} />
-        </div>
-        <div className="row mt"><span className="sp" /><button className="btn p" disabled={!validAfm(s.ownAfm || "") || !(s.businessName || "").trim()} onClick={() => { saveSettings({ ...settings, businessName: s.businessName.trim(), businessType: (s.businessType || "").trim(), ownAfm: s.ownAfm, threshold: parseNum(s.threshold) ?? 1 }); toast("Αποθηκεύτηκε"); }}>Αποθήκευση</button></div>
-      </div>
-      <div className="card mb">
-        <h2>Κατηγορίες ειδών</h2>
-        <p className="mut sm" style={{ marginTop: 0 }}>Δημιουργούνται αυτόματα από τα τιμολόγια. Μετονόμασε μια κατηγορία με όνομα που ήδη υπάρχει για να τις συγχωνεύσεις.</p>
-        {!(settings.categories || []).length ? <div className="mut sm">Δεν υπάρχουν κατηγορίες ακόμα.</div> : (
-          <table><tbody>{[...settings.categories].sort((a, b) => a.localeCompare(b, "el")).map(c => (
-            <tr key={c}>
-              <td>{c}</td><td className="r mut sm nw">{products.filter(p => p.category === c).length} είδη</td>
-              <td className="r nw">
-                <button className="btn sm" onClick={() => { const v = prompt("Νέο όνομα για «" + c + "»:", c); if (v && v.trim() && v.trim() !== c) renameCategory(c, v); }}>Μετονομασία</button>{" "}
-                <button className="btn sm d" onClick={() => { if (confirm("Διαγραφή της κατηγορίας «" + c + "»; Τα είδη της θα μείνουν χωρίς κατηγορία.")) renameCategory(c, ""); }}>Διαγραφή</button>
-              </td>
-            </tr>
-          ))}</tbody></table>
-        )}
-      </div>
-      <div className="card mb">
-        <h2>Αντίγραφα ασφαλείας</h2>
-        <p className="mut sm" style={{ marginTop: 0 }}>Σε αυτή τη δοκιμαστική έκδοση τα δεδομένα μένουν μόνο σε αυτή τη συσκευή και αυτόν τον browser. Κράτα αντίγραφο τακτικά. (Οι φωτογραφίες δεν περιλαμβάνονται στο αντίγραφο.)</p>
-        <div className="row">
-          <button className="btn" onClick={doExport}>Λήψη αντιγράφου (JSON)</button>
-          <button className="btn" onClick={() => impRef.current.click()}>Επαναφορά από αρχείο</button>
-          <input ref={impRef} type="file" accept="application/json" hidden onChange={e => { e.target.files[0] && doImport(e.target.files[0]); e.target.value = ""; }} />
-          <span className="sp" />
-          <button className="btn d" onClick={wipe}>Διαγραφή όλων</button>
-        </div>
-      </div>
-      <div className="mut sm">Αποθηκευμένα: {data.invoices.length} τιμολόγια, {data.suppliers.length} προμηθευτές, {data.alerts.length} αλλαγές τιμών</div>
-    </>
-  );
-}
-
-/* =========================================================
-   Εφαρμογή
-   ========================================================= */
-// Πρώτη χρήση: χωρίς έγκυρο ΑΦΜ η εφαρμογή δεν ανοίγει
-function SetupScreen({ settings, onSave }) {
-  const [s, setS] = useState({ businessName: settings.businessName || "", ownAfm: settings.ownAfm || "", businessType: settings.businessType || "" });
-  const [saving, setSaving] = useState(false);
-  const afmOk = validAfm(s.ownAfm), nameOk = !!s.businessName.trim();
-  return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "linear-gradient(180deg,var(--ink) 0 220px,var(--paper) 220px)" }}>
-      <div style={{ width: "100%", maxWidth: 520 }}>
-        <div className="brand" style={{ padding: "0 4px 18px" }}><b>Τιμολόγια</b><span>από την AR Akron Services</span></div>
-        <form className="card" style={{ padding: 28 }} onSubmit={async e => { e.preventDefault(); if (!afmOk || !nameOk) return; setSaving(true); await onSave({ ...settings, businessName: s.businessName.trim(), ownAfm: s.ownAfm, businessType: s.businessType.trim() }); }}>
-          <h1>Στοιχεία επιχείρησης</h1>
-          <p className="sub">Τα χρειαζόμαστε για να ξέρουμε ποια τιμολόγια είναι δικά σου. Ένα τιμολόγιο που έχει εκδοθεί σε άλλο ΑΦΜ δεν θα μετρήσει στα έξοδά σου χωρίς την επιβεβαίωσή σου.</p>
-          <div className="grid" style={{ gap: 14 }}>
-            <Field label="ΑΦΜ επιχείρησης" value={s.ownAfm} inputMode="numeric" placeholder="9 ψηφία" onChange={v => setS(x => ({ ...x, ownAfm: v.replace(/\D/g, "").slice(0, 9) }))} invalid={s.ownAfm.length === 9 && !afmOk} hint={s.ownAfm.length === 9 && !afmOk ? "Αυτό το ΑΦΜ δεν είναι έγκυρο. Έλεγξε τα ψηφία." : "Όπως αναγράφεται στα τιμολόγια που λαμβάνεις"} />
-            <Field label="Επωνυμία" value={s.businessName} placeholder="π.χ. Plaki Επισιτιστική ΙΚΕ" onChange={v => setS(x => ({ ...x, businessName: v }))} />
-            <Field label="Είδος επιχείρησης (προαιρετικό)" value={s.businessType} placeholder="π.χ. Ταβέρνα, Κομμωτήριο" onChange={v => setS(x => ({ ...x, businessType: v }))} hint="Βοηθά στη δημιουργία κατάλληλων κατηγοριών ειδών" />
-          </div>
-          <button className="btn g mt" style={{ width: "100%", padding: "11px 14px" }} disabled={!afmOk || !nameOk || saving}>{saving ? "Αποθήκευση…" : "Συνέχεια"}</button>
-        </form>
+  <section id="ti" style="padding-top:0">
+    <div class="wrap">
+      <h2>Ό,τι χρειάζεσαι για τις αγορές σου</h2>
+      <p class="intro">Φτιαγμένο για ελληνικά τιμολόγια και για ανθρώπους που δεν έχουν χρόνο για λογιστικά προγράμματα.</p>
+      <div class="feat">
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><h3>Τι ακρίβυνε, με το ποσό</h3><p>Δεν σου λέει απλώς «+7%». Σου λέει ότι στο συγκεκριμένο τιμολόγιο πλήρωσες 12 € παραπάνω.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11v10H3zm11 4h4l3 3v3h-7M7 19.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg><h3>Καρτέλα κάθε προμηθευτή</h3><p>Όλα του τα τιμολόγια, πόσα του έχεις δώσει σε κάθε περίοδο, και τι σου πουλάει σε ποια τιμή.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h6"/></svg><h3>Κατηγορίες που φτιάχνονται μόνες τους</h3><p>Άλλες κατηγορίες έχει μια ταβέρνα, άλλες ένα κομμωτήριο. Η εφαρμογή τις δημιουργεί από τα δικά σου τιμολόγια.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><h3>Μόνο τα δικά σου τιμολόγια</h3><p>Ελέγχει το ΑΦΜ του αγοραστή. Ένα τιμολόγιο άλλης επιχείρησης δεν μπαίνει κατά λάθος στα έξοδά σου.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg><h3>Αρχείο για τον λογιστή</h3><p>Εξαγωγή σε Excel ανά περίοδο ή ανά προμηθευτή, με ΑΦΜ, ΜΑΡΚ, καθαρή αξία και ΦΠΑ.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm3 15h2"/></svg><h3>Στο κινητό, στον πάγκο</h3><p>Δεν χρειάζεται εγκατάσταση. Ανοίγει στον browser του κινητού, εκεί που φτάνει το τιμολόγιο.</p></div>
       </div>
     </div>
-  );
-}
+  </section>
 
-const DEFAULT_SETTINGS = { id: "settings", businessName: "", businessType: "", ownAfm: "", threshold: 1, categories: [], productCats: {}, readAlerts: [] };
-const NAV = [["home", "Αρχική", "home"], ["invoices", "Τιμολόγια", "doc"], ["suppliers", "Προμηθευτές", "truck"], ["products", "Είδη & τιμές", "box"], ["alerts", "Ειδοποιήσεις", "bell"], ["settings", "Ρυθμίσεις", "gear"]];
-
-function App() {
-  const [data, setData] = useState({ suppliers: [], invoices: [], alerts: [] });
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [ready, setReady] = useState(false);
-  const [page, setPage] = useState("home");
-  const [supplierId, setSupplierId] = useState(null);
-  const [invoiceId, setInvoiceId] = useState(null);
-  const [productKeyOpen, setProductKeyOpen] = useState(null);
-  const [editId, setEditId] = useState(null);
-  const [toastMsg, setToastMsg] = useState("");
-
-  async function reload() {
-    const [suppliers, invoices, alerts, st] = await Promise.all([dbAll("suppliers"), dbAll("invoices"), dbAll("alerts"), dbGet("meta", "settings")]);
-    setData({ suppliers, invoices, alerts }); setSettings({ ...DEFAULT_SETTINGS, ...(st || {}) }); setReady(true);
-  }
-  useEffect(() => { reload().catch(e => { alert("Η αποθήκευση στη συσκευή δεν είναι διαθέσιμη: " + e.message); setReady(true); }); }, []);
-  useEffect(() => { if (!toastMsg) return; const t = setTimeout(() => setToastMsg(""), 2600); return () => clearTimeout(t); }, [toastMsg]);
-
-  const supById = useMemo(() => Object.fromEntries(data.suppliers.map(s => [s.id, s])), [data.suppliers]);
-  const products = useMemo(() => buildProducts(data.invoices, settings.productCats || {}), [data.invoices, settings.productCats]);
-  const prodByKey = useMemo(() => Object.fromEntries(products.map(p => [p.key, p])), [products]);
-  const alerts = useMemo(() => {
-    const readSet = new Set(settings.readAlerts || []);
-    return buildAlerts(products, Number(settings.threshold) || 0).map(a => ({ ...a, read: readSet.has(a.id) }));
-  }, [products, settings.threshold, settings.readAlerts]);
-  const vdata = useMemo(() => ({ ...data, alerts }), [data, alerts]);
-  const unread = alerts.filter(a => !a.read).length;
-
-  function go(p) { setPage(p); setSupplierId(null); setEditId(null); window.scrollTo(0, 0); }
-  function startEdit(id) { setInvoiceId(null); setEditId(id); setPage("scan"); window.scrollTo(0, 0); }
-  function endEdit(id) { setEditId(null); setPage("invoices"); setInvoiceId(id); }
-  function openSupplier(id) { setInvoiceId(null); setProductKeyOpen(null); setPage("suppliers"); setSupplierId(id); window.scrollTo(0, 0); }
-
-  async function saveDraft(draft, files, existing) {
-    const afm = draft.supplier.afm.replace(/\D/g, "");
-    let sup = (afm && data.suppliers.find(s => s.afm === afm)) || (draft.supplier.name && data.suppliers.find(s => norm(s.name) === norm(draft.supplier.name))) || { id: uid(), createdAt: Date.now(), notes: "" };
-    const pick = k => (draft.supplier[k] || "").trim() || sup[k] || "";
-    sup = { ...sup, afm: afm || sup.afm || "", name: pick("name") || "Άγνωστος προμηθευτής", doy: pick("doy"), address: pick("address"), phone: pick("phone"), email: pick("email") };
-    await dbPut("suppliers", sup);
-    const fileIds = [];
-    for (const f of files) { const id = uid(); await dbPut("files", { id, blob: f.blob, mimeType: f.mimeType }); fileIds.push(id); }
-    const knownCats = settings.categories || [];
-    const lines = draft.lines.filter(l => (l.description || "").trim() || (l.code || "").trim()).map(l => ({
-      code: (l.code || "").trim(), description: (l.description || "").trim(), quantity: parseNum(l.quantity), unit: (l.unit || "").trim(),
-      unitPrice: parseNum(l.unitPrice), discountPct: parseNum(l.discountPct), net: parseNum(l.net), vatPct: parseNum(l.vatPct),
-      category: canonCat(l.category, knownCats),
-    }));
-    const newCats = [...new Set(lines.map(l => l.category).filter(c => c && !knownCats.includes(c)))];
-    const net = parseNum(draft.invoice.net) ?? (lines.length ? Math.round(sum(lines, l => l.net) * 100) / 100 : null);
-    const vat = parseNum(draft.invoice.vat);
-    const total = parseNum(draft.invoice.total) ?? (net != null && vat != null ? net + vat : net);
-    const inv = {
-      id: existing ? existing.id : uid(), supplierId: sup.id, number: draft.invoice.number.trim(), date: draft.invoice.date || todayISO(), type: draft.invoice.type.trim(), mark: draft.invoice.mark.trim(),
-      net, vat, total, paymentMethod: draft.invoice.paymentMethod.trim(), dueDate: draft.invoice.dueDate || "", lines, buyerName: ((draft.buyer || {}).name || "").trim(), buyerAfm: (draft.buyer || {}).afm || "", fileIds: existing ? existing.fileIds || [] : fileIds, notes: draft.notes || "", createdAt: existing ? existing.createdAt : Date.now(),
-    };
-    await dbPut("invoices", inv);
-    if (newCats.length) await dbPut("meta", { ...settings, id: "settings", categories: [...knownCats, ...newCats] });
-    await reload();
-    const newAlerts = buildAlerts(buildProducts([...data.invoices.filter(i => i.id !== inv.id), inv], settings.productCats || {}), Number(settings.threshold) || 0).filter(a => a.invoiceId === inv.id);
-    return { inv, alerts: newAlerts };
-  }
-
-  async function deleteInvoice(id) {
-    const inv = data.invoices.find(i => i.id === id);
-    if (inv) for (const f of inv.fileIds || []) await dbDel("files", f);
-    await dbDel("invoices", id);
-    for (const a of data.alerts.filter(a => a.invoiceId === id)) await dbDel("alerts", a.id);
-    setInvoiceId(null); await reload(); setToastMsg("Το τιμολόγιο διαγράφηκε");
-  }
-  async function markAllRead() { await dbPut("meta", { ...settings, id: "settings", readAlerts: alerts.map(a => a.id) }); await reload(); }
-  async function setCategory(key, cat) {
-    const cats = settings.categories || [], c = canonCat(cat, cats);
-    await dbPut("meta", { ...settings, id: "settings", productCats: { ...(settings.productCats || {}), [key]: c }, categories: c && !cats.includes(c) ? [...cats, c] : cats });
-    await reload(); setToastMsg("Η κατηγορία άλλαξε");
-  }
-  // Στέλνει τις περιγραφές (μόνο κείμενο) στο Gemini και αποθηκεύει τις κατηγορίες που πρότεινε
-  async function autoClassify(list) {
-    try {
-      const cats = [...(settings.categories || [])];
-      const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "classify", items: list.map(p => p.description), categories: cats, businessType: settings.businessType || "" }) });
-      const j = await res.json();
-      if (!res.ok || j.error) throw new Error(j.error || "Σφάλμα");
-      const pc = { ...(settings.productCats || {}) };
-      for (const a of j.result.assignments || []) {
-        const p = list[a.i]; if (!p || !a.category) continue;
-        const c = canonCat(a.category, cats); if (!cats.includes(c)) cats.push(c);
-        pc[p.key] = c;
-      }
-      await dbPut("meta", { ...settings, id: "settings", productCats: pc, categories: cats });
-      await reload(); setToastMsg("Τα είδη κατατάχθηκαν");
-    } catch (e) { alert("Η κατηγοριοποίηση απέτυχε: " + e.message); }
-  }
-  // Μετονομασία (ή συγχώνευση, αν το νέο όνομα υπάρχει ήδη) / διαγραφή κατηγορίας
-  async function renameCategory(from, to) {
-    const cats = settings.categories || [];
-    to = (to || "").trim(); if (to) to = canonCat(to, cats.filter(c => c !== from));
-    const newCats = [...new Set(cats.map(c => c === from ? to : c).filter(Boolean))];
-    const pc = Object.fromEntries(Object.entries(settings.productCats || {}).map(([k, v]) => [k, v === from ? to : v]));
-    for (const inv of data.invoices) if (inv.lines.some(l => l.category === from)) await dbPut("invoices", { ...inv, lines: inv.lines.map(l => l.category === from ? { ...l, category: to } : l) });
-    await dbPut("meta", { ...settings, id: "settings", categories: newCats, productCats: pc });
-    await reload(); setToastMsg(to ? "Η κατηγορία ενημερώθηκε" : "Η κατηγορία διαγράφηκε");
-  }
-  async function saveSettings(s) { await dbPut("meta", { ...s, id: "settings" }); await reload(); }
-  async function updateSupplier(s) { await dbPut("suppliers", s); await reload(); setToastMsg("Αποθηκεύτηκε"); }
-
-  if (!ready) return <div className="empty" style={{ paddingTop: 120 }}><div className="spin" /></div>;
-  if (!validAfm(settings.ownAfm || "")) return <SetupScreen settings={settings} onSave={saveSettings} />;
-
-  const openInv = invoiceId && data.invoices.find(i => i.id === invoiceId);
-  const openProd = productKeyOpen && prodByKey[productKeyOpen];
-  const supplier = supplierId && supById[supplierId];
-
-  let content;
-  const editInv = editId && data.invoices.find(i => i.id === editId);
-  if (page === "scan") content = <ScanPage key={editId || "new"} editInv={editInv} onEditDone={endEdit} data={vdata} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} />;
-  else if (page === "invoices") content = <InvoicesPage data={vdata} supById={supById} openInvoice={setInvoiceId} />;
-  else if (page === "suppliers") content = supplier
-    ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} />
-    : <SuppliersPage data={vdata} openSupplier={openSupplier} />;
-  else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} autoClassify={autoClassify} />;
-  else if (page === "alerts") content = <AlertsPage data={vdata} supById={supById} settings={settings} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
-  else if (page === "settings") content = <SettingsPage products={products} renameCategory={renameCategory} settings={settings} saveSettings={saveSettings} data={vdata} reload={reload} toast={setToastMsg} />;
-  else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} openInvoice={setInvoiceId} settings={settings} />;
-
-  return (
-    <>
-      <div className="mtop">
-        <div className="brand"><b>Τιμολόγια</b><span>AR Akron</span></div><span className="sp" />
-        <button className="icbtn" onClick={() => go("alerts")} aria-label="Ειδοποιήσεις"><Icon n="bell" />{unread > 0 && <span className="dot" />}</button>
-        <button className="icbtn" onClick={() => go("settings")} aria-label="Ρυθμίσεις"><Icon n="gear" /></button>
+  <section style="padding-top:0">
+    <div class="wrap">
+      <div class="math">
+        <div>
+          <h2>Μια μικρή αύξηση που κανείς δεν πρόσεξε</h2>
+          <p>Οι προμηθευτές σπάνια ανακοινώνουν τις αυξήσεις. Απλώς έρχονται στο επόμενο τιμολόγιο, και το τιμολόγιο μπαίνει στο συρτάρι.</p>
+        </div>
+        <div class="calc" aria-label="Παράδειγμα υπολογισμού">
+          <div><span>Αύξηση στη φέτα</span><span>+0,40 € το κιλό</span></div>
+          <div><span>Κατανάλωση</span><span>30 κιλά την εβδομάδα</span></div>
+          <div class="res"><span>Κόστος</span><span>≈ 52 € τον μήνα</span></div>
+          <p style="font-size:15px;margin-top:8px">Από ένα μόνο είδος. Η συνδρομή Basic κοστίζει 24 €.</p>
+        </div>
       </div>
-      <div className="app">
-        <aside className="side">
-          <div className="brand"><b>Τιμολόγια</b><span>από την AR Akron Services</span></div>
-          <button className="nav scanbtn" onClick={() => go("scan")}><Icon n="cam" /> Νέο τιμολόγιο</button>
-          {NAV.map(([k, l, ic]) => (
-            <button key={k} className={"nav" + (page === k ? " on" : "")} onClick={() => go(k)}><Icon n={ic} /> {l}{k === "alerts" && unread > 0 && <span className="cnt">{unread}</span>}</button>
-          ))}
-          <div className="side-foot">{settings.businessName ? <><b>{settings.businessName}</b>{settings.businessType || "Η επιχείρησή μου"}</> : <a href="#" style={{ color: "#C8CDD7" }} onClick={e => { e.preventDefault(); go("settings"); }}>Συμπλήρωσε τα στοιχεία της επιχείρησης</a>}</div>
-        </aside>
-        <main className="main">{content}</main>
-      </div>
-      <nav className="bnav">
-        {[["home", "Αρχική", "home"], ["invoices", "Τιμολόγια", "doc"], ["scan", "Σάρωση", "cam"], ["suppliers", "Προμηθ.", "truck"], ["products", "Είδη", "box"]].map(([k, l, ic]) => (
-          <button key={k} className={(page === k ? "on" : "") + (k === "scan" ? " big" : "")} onClick={() => go(k)}>
-            {k === "scan" ? <span className="c"><Icon n={ic} /></span> : <Icon n={ic} />}{l}
-          </button>
-        ))}
-      </nav>
-      {openInv && <InvoiceModal inv={openInv} supplier={supById[openInv.supplierId]} onClose={() => setInvoiceId(null)} onDelete={deleteInvoice} openSupplier={openSupplier} onEdit={startEdit} />}
-      {openProd && <ProductModal product={openProd} supplier={supById[openProd.supplierId]} onClose={() => setProductKeyOpen(null)} openInvoice={id => { setProductKeyOpen(null); setInvoiceId(id); }} setCategory={setCategory} categories={settings.categories || []} />}
-      {toastMsg && <div className="toast">{toastMsg}</div>}
-    </>
-  );
-}
+    </div>
+  </section>
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-</script>
+  <section id="times" style="padding-top:0">
+    <div class="wrap">
+      <h2>Απλές τιμές, χωρίς δέσμευση</h2>
+      <p class="intro">Μηνιαία συνδρομή, ακύρωση όποτε θέλεις. Με ετήσια πληρωμή παίρνεις δύο μήνες δώρο.</p>
+      <div class="plans">
+        <div class="plan">
+          <h3>Basic</h3><div class="for">Για ένα κατάστημα</div>
+          <div class="price">24 € <small>/ μήνα + ΦΠΑ</small></div><div class="yr">ή 240 € τον χρόνο</div>
+          <ul><li>Έως 100 τιμολόγια τον μήνα</li><li>Καρτέλες προμηθευτών</li><li>Ειδοποιήσεις αλλαγής τιμών</li><li>Αυτόματες κατηγορίες ειδών</li><li>Εξαγωγή σε Excel</li></ul>
+          <a class="btn ol" href="/app/">Δωρεάν δοκιμή</a>
+        </div>
+        <div class="plan pop">
+          <span class="tag">Οι περισσότεροι διαλέγουν</span>
+          <h3>Pro</h3><div class="for">Για επιχειρήσεις με πολλούς προμηθευτές</div>
+          <div class="price">49 € <small>/ μήνα + ΦΠΑ</small></div><div class="yr">ή 490 € τον χρόνο</div>
+          <ul><li>Έως 400 τιμολόγια τον μήνα</li><li>Όλα όσα έχει το Basic</li><li>Εξαγωγή ανά προμηθευτή για τον λογιστή</li><li class="soon">Πληρωμές και υπόλοιπα προμηθευτών<span class="soonb">σύντομα</span></li><li class="soon">Πολλοί χρήστες<span class="soonb">σύντομα</span></li></ul>
+          <a class="btn k" href="/app/">Δωρεάν δοκιμή</a>
+        </div>
+        <div class="plan">
+          <h3>Group</h3><div class="for">Για αλυσίδες και πολλά καταστήματα</div>
+          <div class="price">99 € <small>/ μήνα + ΦΠΑ</small></div><div class="yr">ή 990 € τον χρόνο</div>
+          <ul><li>Απεριόριστα τιμολόγια, με εύλογη χρήση</li><li>Όλα όσα έχει το Pro</li><li class="soon">Πολλά καταστήματα<span class="soonb">σύντομα</span></li><li class="soon">Σύγκριση τιμών μεταξύ καταστημάτων<span class="soonb">σύντομα</span></li></ul>
+          <a class="btn ol" href="mailto:info@arakronservices.gr?subject=Προμηθευτής%2B%20Group">Μίλα μαζί μας</a>
+        </div>
+      </div>
+      <p class="pnote">Η εφαρμογή βρίσκεται σε δοκιμαστική λειτουργία και η χρήση είναι προς το παρόν δωρεάν. Θα ενημερωθείς πριν ξεκινήσει οποιαδήποτε χρέωση.</p>
+    </div>
+  </section>
+
+  <section id="faq" style="padding-top:0">
+    <div class="wrap">
+      <h2>Συχνές ερωτήσεις</h2>
+      <div class="faq">
+        <details><summary>Χρειάζομαι κωδικούς Taxisnet ή σύνδεση με το myDATA;</summary><p>Όχι. Η εφαρμογή διαβάζει το ίδιο το τιμολόγιο, από φωτογραφία ή PDF. Δεν ζητάμε κανέναν κωδικό.</p></details>
+        <details><summary>Τι τιμολόγια διαβάζει;</summary><p>Τιμολόγια αγορών, δελτία αποστολής-τιμολόγια, λογαριασμούς υπηρεσιών (ρεύμα, τηλεφωνία, λογιστή) και αποδείξεις. Φωτογραφία από το κινητό, εικόνα ή PDF, και πολυσέλιδα έως 6 σελίδες.</p></details>
+        <details><summary>Κι αν διαβάσει κάτι λάθος;</summary><p>Πριν αποθηκευτεί οτιδήποτε, βλέπεις τα στοιχεία δίπλα στο τιμολόγιο και τα διορθώνεις. Αν λείπει το σύνολο ή η ημερομηνία, η εφαρμογή δεν σε αφήνει να το αποθηκεύσεις. Μπορείς επίσης να διορθώσεις ένα τιμολόγιο αργότερα.</p></details>
+        <details><summary>Οι τιμές είναι με ή χωρίς ΦΠΑ;</summary><p>Οι τιμές των ειδών συγκρίνονται χωρίς ΦΠΑ, γιατί αυτό είναι το πραγματικό σου κόστος και γιατί μια αλλαγή συντελεστή δεν είναι αύξηση από τον προμηθευτή. Δίπλα φαίνεται και η τιμή με ΦΠΑ. Τα σύνολα αγορών είναι με ΦΠΑ, όπως τα πλήρωσες.</p></details>
+        <details><summary>Πού αποθηκεύονται τα δεδομένα μου;</summary><p>Στη δοκιμαστική έκδοση, στη συσκευή και στον browser που χρησιμοποιείς. Δεν φεύγουν από εκεί, εκτός από τη στιγμή της ανάγνωσης του τιμολογίου. Γι' αυτό, από τις Ρυθμίσεις κράτα αντίγραφο ασφαλείας. Στην επόμενη έκδοση έρχεται λογαριασμός με πρόσβαση από κάθε συσκευή.</p></details>
+        <details><summary>Ταιριάζει στη δική μου επιχείρηση;</summary><p>Αν αγοράζεις τακτικά από προμηθευτές, ναι. Ξεκίνησε από την εστίαση, αλλά οι κατηγορίες ειδών φτιάχνονται από τα δικά σου τιμολόγια, οπότε δουλεύει το ίδιο για καφέ, μίνι μάρκετ, κομμωτήρια ή συνεργεία.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap">
+      <div class="final">
+        <div><h2>Δοκίμασέ το με τα τιμολόγια της εβδομάδας</h2><p>Πέρασε πέντε τιμολόγια και δες τι άλλαξε. Χωρίς κάρτα, χωρίς εγγραφή.</p></div>
+        <span class="sp"></span>
+        <a class="btn k" href="/app/">Ξεκίνα δωρεάν</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="fgrid">
+      <div>
+        <a class="logo" href="/"><b>Προμηθευτής<em>+</em></b><span>από την AR Akron Services</span></a>
+        <p style="max-width:360px;margin-top:14px">Εργαλεία για εστίαση, τουρισμό και μικρές επιχειρήσεις, από ανθρώπους που έχουν δουλέψει πίσω από τον πάγκο.</p>
+      </div>
+      <div><h4>Προϊόν</h4><ul><li><a href="#pos">Πώς δουλεύει</a></li><li><a href="#times">Τιμές</a></li><li><a href="#faq">Ερωτήσεις</a></li><li><a href="/app/">Άνοιγμα εφαρμογής</a></li></ul></div>
+      <div><h4>Επικοινωνία</h4><ul><li><a href="mailto:info@arakronservices.gr">info@arakronservices.gr</a></li><li><a href="https://arakronservices.gr">arakronservices.gr</a></li></ul></div>
+    </div>
+    <div class="copy">© 2026 AR Akron Services</div>
+  </div>
+</footer>
+
 </body>
 </html>

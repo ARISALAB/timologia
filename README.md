@@ -1,9 +1,10 @@
-# Τιμολόγια · beta
+# Προμηθευτής+ (beta)
 
 Σάρωση τιμολογίων προμηθευτών με Gemini, καρτέλες προμηθευτών, ιστορικό τιμών και ειδοποιήσεις αλλαγής τιμών.
 
 ## Αρχεία
-- `index.html` — όλη η εφαρμογή (React μέσω CDN). Τα δεδομένα αποθηκεύονται στη συσκευή (IndexedDB).
+- `index.html`: landing page του Προμηθευτής+.
+- `app/index.html`: η εφαρμογή (React μέσω CDN). Τα δεδομένα αποθηκεύονται στη συσκευή (IndexedDB).
 - `netlify/edge-functions/extract.js` — `/api/extract`: στέλνει τις φωτογραφίες/PDF στο Gemini και επιστρέφει JSON.
 - `netlify.toml`
 

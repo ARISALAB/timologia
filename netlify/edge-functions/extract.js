@@ -1,6 +1,6 @@
 // Ανάγνωση τιμολογίου με Gemini.
 // POST /api/extract  body: { files: [{ mimeType, data(base64) }], ownAfm?: "123456789" }
-// Απαιτεί env var GEMINI_API_KEY στο Netlify. Προαιρετικά GEMINI_MODEL (default gemini-2.5-flash).
+// Απαιτεί env var GEMINI_API_KEY στο Netlify. Προαιρετικά GEMINI_MODEL (default gemini-3.8-flash).
 
 const S = (type) => ({ type, nullable: true });
 
@@ -84,7 +84,7 @@ export default async (request) => {
 
   const key = Netlify.env.get("GEMINI_API_KEY");
   if (!key) return json({ error: "Λείπει το GEMINI_API_KEY στις ρυθμίσεις του Netlify (Environment variables)." }, 500);
-  const model = Netlify.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+  const model = Netlify.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
 
   let body;
   try {

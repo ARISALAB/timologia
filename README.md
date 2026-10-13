@@ -12,7 +12,7 @@
 2. Netlify → Add new site → Import from GitHub → αυτό το repo (χωρίς build command, publish `.`).
 3. Site configuration → Environment variables:
    - `GEMINI_API_KEY` = το κλειδί
-   - (προαιρετικά) `GEMINI_MODEL` = π.χ. `gemini-2.5-flash` (προεπιλογή)
+   - (προαιρετικά) `GEMINI_MODEL` = π.χ. `gemini-3.8-flash` (προεπιλογή)
 4. Deploys → Trigger deploy.
 
 ## Σημειώσεις δοκιμαστικής έκδοσης

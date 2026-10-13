@@ -84,6 +84,7 @@ ${ownAfm ? `- Ο αγοραστής έχει ΑΦΜ ${ownAfm}. Αυτό το Α�
 - Αν η ημερομηνία έκδοσης δεν φαίνεται, βάλε null (όχι τη σημερινή).
 - lines: μία εγγραφή για κάθε γραμμή είδους. code = κωδικός είδους όπως είναι τυπωμένος (null αν δεν υπάρχει). description = περιγραφή όπως γράφεται. unit = μονάδα μέτρησης (ΚΙΛ, ΤΕΜ, ΛΙΤ, ΚΙΒ κ.λπ.). unit_price = τιμή μονάδας ΧΩΡΙΣ ΦΠΑ. discount_pct = έκπτωση %. net_amount = καθαρή αξία γραμμής χωρίς ΦΠΑ. vat_pct = συντελεστής ΦΠΑ (π.χ. 13 ή 24).
 - category: η κατηγορία του είδους, σύμφωνα με τους κανόνες κατηγοριών παρακάτω.
+- unit_price: αν δεν είναι τυπωμένη τιμή μονάδας, υπολόγισέ την ως net_amount / quantity. Ποτέ 0 όταν η γραμμή έχει αξία.
 - Μην επινοείς τιμές ή κωδικούς. Αν κάτι δεν φαίνεται ή δεν διαβάζεται, βάλε null.
 - Αν υπάρχουν χειρόγραφες διορθώσεις τιμών ή ποσοτήτων, κράτα τις τυπωμένες τιμές και ανέφερε τη διόρθωση στο notes.
 - Αν οι εικόνες είναι πολλές σελίδες του ίδιου παραστατικού, συνδύασέ τες σε ένα αποτέλεσμα.
@@ -104,6 +105,7 @@ function fixTotals(r) {
     const s = r.lines.reduce((a, l) => a + (n(l.net_amount) || 0), 0); if (s > 0) net = r2(s);
   }
   Object.assign(inv, { net_total: net, vat_total: vat, total: tot });
+  for (const l of r.lines || []) if (!(n(l.unit_price) > 0) && n(l.net_amount) > 0) l.unit_price = r2(l.net_amount / (n(l.quantity) > 0 ? l.quantity : 1));
   if ((!Array.isArray(r.lines) || !r.lines.length) && net != null) {
     r.lines = [{ code: null, description: inv.type || "Υπηρεσίες", quantity: 1, unit: null, unit_price: net, discount_pct: null, net_amount: net, vat_pct: null, category: null }];
   }

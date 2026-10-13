@@ -98,6 +98,15 @@ input.in:focus,select.in:focus{outline:2px solid var(--accent-soft);border-color
 .totals td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
 .imgs{display:flex;gap:10px;overflow-x:auto} .imgs img{height:220px;border-radius:8px;border:1px solid var(--line);cursor:zoom-in}
 .mb{margin-bottom:16px} .mt{margin-top:16px}
+.grps{display:flex;flex-direction:column;gap:8px}
+.grp{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+.grp>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;font-weight:600}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary:hover{background:#fafbfc}
+.grp .ge{font-size:18px;width:24px;text-align:center} .grp .gc{background:var(--line2);color:var(--muted);font-size:12px;border-radius:99px;padding:1px 8px;font-weight:600}
+.grp .chev{color:var(--faint);font-size:20px;transition:transform .15s;margin-left:4px} .grp[open] .chev{transform:rotate(90deg)}
+.grp[open]>summary{border-bottom:1px solid var(--line)}
+.gbody{padding:0 14px 6px} .gbody .tbl{margin:0 -14px;padding:0 14px}
 @media (max-width:1000px){ .g4{grid-template-columns:repeat(2,1fr)} .fgrid{grid-template-columns:repeat(2,1fr)} .review{grid-template-columns:1fr} .preview{position:static;max-height:none;flex-direction:row;overflow-x:auto} .preview img{width:auto;height:240px} }
 @media (max-width:860px){
   .app{grid-template-columns:1fr} .side{display:none}
@@ -219,8 +228,14 @@ function download(name, content, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
+/* Κατηγορίες: δεν υπάρχουν έτοιμες. Τις δημιουργεί το Gemini ανά επιχείρηση (settings.categories). */
+const NO_CAT = "Χωρίς κατηγορία";
+const catLabel = c => c || NO_CAT;
+// Ίδια κατηγορία γραμμένη αλλιώς ("γαλακτοκομικα" = "Γαλακτοκομικά") → χρησιμοποιούμε την υπάρχουσα
+function canonCat(label, list) { const l = (label || "").trim(); if (!l) return ""; return list.find(c => normKey(c) === normKey(l)) || l; }
+
 /* Προϊόντα & ιστορικό τιμών (υπολογίζονται από τα τιμολόγια) */
-function buildProducts(invoices) {
+function buildProducts(invoices, catOverrides = {}) {
   const map = new Map();
   const sorted = [...invoices].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
   for (const inv of sorted) {
@@ -232,13 +247,15 @@ function buildProducts(invoices) {
       let e = map.get(key);
       if (!e) { e = { key, supplierId: inv.supplierId, code: l.code, description: l.description, unit: l.unit, history: [] }; map.set(key, e); }
       if (l.description) e.description = l.description; if (l.unit) e.unit = l.unit; if (l.code) e.code = l.code;
+      if (l.category) e.lineCat = l.category;
       e.history.push({ date: inv.date, price: p, qty: l.quantity, invoiceId: inv.id, invoiceNo: inv.number, createdAt: inv.createdAt });
     }
   }
   return [...map.values()].map(e => {
     const h = e.history, last = h[h.length - 1], prev = h.length > 1 ? h[h.length - 2] : null;
     const prices = h.map(x => x.price);
-    return { ...e, last, prev, change: prev ? pctChange(prev.price, last.price) : null, min: Math.min(...prices), max: Math.max(...prices), first: h[0] };
+    const category = (e.key in catOverrides ? catOverrides[e.key] : e.lineCat) || "";
+    return { ...e, category, last, prev, change: prev ? pctChange(prev.price, last.price) : null, min: Math.min(...prices), max: Math.max(...prices), first: h[0] };
   });
 }
 
@@ -251,7 +268,7 @@ function buildAlerts(products, threshold) {
       const pct = pctChange(h[i - 1].price, h[i].price);
       if (pct == null || Math.abs(pct) < threshold || Math.abs(pct) < 0.01) continue;
       out.push({
-        id: p.key + "|" + h[i].invoiceId, invoiceId: h[i].invoiceId, supplierId: p.supplierId, productKey: p.key,
+        id: p.key + "|" + h[i].invoiceId, invoiceId: h[i].invoiceId, supplierId: p.supplierId, productKey: p.key, category: p.category,
         code: p.code, description: p.description, unit: p.unit,
         oldPrice: h[i - 1].price, newPrice: h[i].price, oldDate: h[i - 1].date, newDate: h[i].date,
         pct, qty: h[i].qty, createdAt: h[i].createdAt || 0,
@@ -338,13 +355,13 @@ function Sparkline({ points, w = 560, h = 140 }) {
 /* =========================================================
    Έλεγχος & διόρθωση αναγνωσμένου τιμολογίου
    ========================================================= */
-function emptyLine() { return { id: uid(), code: "", description: "", quantity: "", unit: "", unitPrice: "", discountPct: "", net: "", vatPct: "" }; }
+function emptyLine() { return { id: uid(), code: "", description: "", quantity: "", unit: "", unitPrice: "", discountPct: "", net: "", vatPct: "", category: "" }; }
 function emptyDraft() {
   return { supplier: { afm: "", name: "", doy: "", address: "", phone: "", email: "" }, invoice: { number: "", date: todayISO(), type: "", mark: "", net: "", vat: "", total: "", paymentMethod: "", dueDate: "" }, lines: [emptyLine()], notes: "" };
 }
 function resultToDraft(r) {
   const s = r.supplier || {}, i = r.invoice || {};
-  const lines = (r.lines || []).map(l => ({ id: uid(), code: l.code || "", description: l.description || "", quantity: numStr(l.quantity), unit: l.unit || "", unitPrice: numStr(l.unit_price), discountPct: numStr(l.discount_pct), net: numStr(l.net_amount), vatPct: numStr(l.vat_pct) }));
+  const lines = (r.lines || []).map(l => ({ id: uid(), code: l.code || "", description: l.description || "", quantity: numStr(l.quantity), unit: l.unit || "", unitPrice: numStr(l.unit_price), discountPct: numStr(l.discount_pct), net: numStr(l.net_amount), vatPct: numStr(l.vat_pct), category: l.category || "" }));
   return {
     supplier: { afm: (s.afm || "").replace(/\D/g, ""), name: s.name || "", doy: s.doy || "", address: s.address || "", phone: s.phone || "", email: s.email || "" },
     invoice: { number: i.number || "", date: /^\d{4}-\d{2}-\d{2}$/.test(i.date || "") ? i.date : todayISO(), type: i.type || "", mark: i.mark || "", net: numStr(i.net_total), vat: numStr(i.vat_total), total: numStr(i.total), paymentMethod: i.payment_method || "", dueDate: /^\d{4}-\d{2}-\d{2}$/.test(i.due_date || "") ? i.due_date : "" },
@@ -352,13 +369,13 @@ function resultToDraft(r) {
   };
 }
 
-function LinesEditor({ lines, onChange }) {
+function LinesEditor({ lines, onChange, categories = [] }) {
   const set = (id, k, v) => onChange(lines.map(l => l.id === id ? { ...l, [k]: v } : l));
   const cols = [["code", "Κωδικός", 90], ["description", "Περιγραφή", 230], ["quantity", "Ποσ.", 64], ["unit", "Μον.", 58], ["unitPrice", "Τιμή μον.", 84], ["discountPct", "Έκπτ.%", 60], ["net", "Καθαρή", 84], ["vatPct", "ΦΠΑ%", 54]];
   return (
     <div className="tbl">
-      <table className="lines" style={{ minWidth: 820 }}>
-        <thead><tr>{cols.map(([k, l]) => <th key={k}>{l}</th>)}<th></th></tr></thead>
+      <table className="lines" style={{ minWidth: 980 }}>
+        <thead><tr>{cols.map(([k, l]) => <th key={k}>{l}</th>)}<th>Κατηγορία</th><th></th></tr></thead>
         <tbody>
           {lines.map(l => (
             <tr key={l.id}>
@@ -367,17 +384,21 @@ function LinesEditor({ lines, onChange }) {
                   <input className="in" value={l[k]} inputMode={["code", "description", "unit"].includes(k) ? undefined : "decimal"} onChange={e => set(l.id, k, e.target.value)} />
                 </td>
               ))}
+              <td style={{ width: 150 }}>
+                <input className="in" list="catlist" placeholder="—" value={l.category || ""} onChange={e => set(l.id, "category", e.target.value)} title="Κατηγορία: διάλεξε ή γράψε νέα" />
+              </td>
               <td><button className="btn sm d" title="Διαγραφή γραμμής" onClick={() => onChange(lines.filter(x => x.id !== l.id))}>✕</button></td>
             </tr>
           ))}
         </tbody>
       </table>
+      <datalist id="catlist">{categories.map(c => <option key={c} value={c} />)}</datalist>
       <button className="btn sm mt" onClick={() => onChange([...lines, emptyLine()])}><Icon n="plus" /> Γραμμή</button>
     </div>
   );
 }
 
-function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, saving, onSave, onCancel }) {
+function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, saving, onSave, onCancel, categories }) {
   const setS = (k, v) => setDraft(d => ({ ...d, supplier: { ...d.supplier, [k]: v } }));
   const setI = (k, v) => setDraft(d => ({ ...d, invoice: { ...d.invoice, [k]: v } }));
   const afm = draft.supplier.afm.replace(/\D/g, "");
@@ -422,7 +443,7 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
 
         <div className="card">
           <div className="row mb"><h2 style={{ margin: 0 }}>Είδη ({draft.lines.length})</h2><span className="sp" /><span className="mut sm">Άθροισμα γραμμών: <b>{fmtEur(linesNet)}</b></span></div>
-          <LinesEditor lines={draft.lines} onChange={lines => setDraft(d => ({ ...d, lines }))} />
+          <LinesEditor lines={draft.lines} categories={categories} onChange={lines => setDraft(d => ({ ...d, lines }))} />
         </div>
 
         <div className="row">
@@ -478,7 +499,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
   async function read() {
     setPhase("reading"); setError("");
     try {
-      const payload = { files: await Promise.all(files.map(async f => ({ mimeType: f.mimeType, data: await blobToBase64(f.blob) }))), ownAfm: settings.ownAfm || "" };
+      const payload = { files: await Promise.all(files.map(async f => ({ mimeType: f.mimeType, data: await blobToBase64(f.blob) }))), ownAfm: settings.ownAfm || "", categories: settings.categories || [], businessType: settings.businessType || "" };
       const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const ct = res.headers.get("content-type") || "";
       if (!ct.includes("application/json")) throw new Error("Η ανάγνωση δουλεύει μόνο όταν η εφαρμογή τρέχει στο Netlify (ή με netlify dev).");
@@ -514,7 +535,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
       <h1>Έλεγχος στοιχείων</h1>
       <p className="sub">Δες ότι διαβάστηκαν σωστά και διόρθωσε ό,τι χρειάζεται πριν την αποθήκευση.</p>
       {error && <div className="alert e mb">{error}</div>}
-      <ReviewForm draft={draft} setDraft={setDraft} previews={files} duplicate={duplicate} matchedSupplier={matched} saving={saving} onSave={save} onCancel={reset} />
+      <ReviewForm categories={settings.categories || []} draft={draft} setDraft={setDraft} previews={files} duplicate={duplicate} matchedSupplier={matched} saving={saving} onSave={save} onCancel={reset} />
     </>
   );
 
@@ -737,7 +758,8 @@ function SupplierDetail({ supplier, data, products, supById, openInvoice, openPr
       </div>
       <div className="card">
         <h2>Είδη και τιμές</h2>
-        <ProductsTable products={prods} supById={supById} onOpen={openProduct} />
+        {!prods.length ? <div className="empty">Δεν υπάρχουν είδη ακόμα.</div> :
+          <CatGroups items={prods} summary={prodSummary}>{l => <ProductsTable products={l} supById={supById} onOpen={openProduct} />}</CatGroups>}
       </div>
       {edit && <SupplierEdit supplier={{ notes: "", ...supplier }} onClose={() => setEdit(false)} onSave={async s => { await onUpdate(s); setEdit(false); }} />}
     </>
@@ -774,9 +796,56 @@ function SuppliersPage({ data, openSupplier }) {
 }
 
 /* =========================================================
+   Ομαδοποίηση ανά κατηγορία
+   ========================================================= */
+// Κλειστές ομάδες με σύνοψη στην κεφαλίδα. Ανοίγουν όλες όταν υπάρχει αναζήτηση.
+function CatGroups({ items, forceOpen, summary, children }) {
+  const labels = [...new Set(items.map(x => x.category || ""))].sort((a, b) => !a ? 1 : !b ? -1 : a.localeCompare(b, "el"));
+  if (!labels.length) return null;
+  return (
+    <div className="grps">
+      {labels.map(c => {
+        const list = items.filter(x => (x.category || "") === c);
+        return (
+          <details key={c + (forceOpen ? "|o" : "|c")} className="grp" open={forceOpen || labels.length === 1}>
+            <summary>
+              <span className="gl" style={c ? {} : { color: "var(--muted)" }}>{catLabel(c)}</span>
+              <span className="gc">{list.length}</span>
+              <span className="sp" />{summary(list)}
+              <span className="chev">›</span>
+            </summary>
+            <div className="gbody">{children(list)}</div>
+          </details>
+        );
+      })}
+    </div>
+  );
+}
+
+function CatSelect({ value, categories, onChange }) {
+  return (
+    <select className="in" style={{ maxWidth: 260 }} value={value || ""} onChange={e => {
+      let v = e.target.value;
+      if (v === "__new") { v = (prompt("Όνομα νέας κατηγορίας:") || "").trim(); if (!v) return; }
+      onChange(v);
+    }}>
+      <option value="">{NO_CAT}</option>
+      {categories.map(c => <option key={c} value={c}>{c}</option>)}
+      {value && !categories.includes(value) && <option value={value}>{value}</option>}
+      <option value="__new">+ Νέα κατηγορία…</option>
+    </select>
+  );
+}
+
+const prodSummary = list => {
+  const up = list.filter(p => p.change > 0.05).length, down = list.filter(p => p.change < -0.05).length;
+  return <span className="row" style={{ gap: 6 }}>{up > 0 && <span className="badge b-up">▲ {up}</span>}{down > 0 && <span className="badge b-down">▼ {down}</span>}</span>;
+};
+
+/* =========================================================
    Προϊόντα
    ========================================================= */
-function ProductModal({ product, supplier, onClose, openInvoice }) {
+function ProductModal({ product, supplier, onClose, openInvoice, setCategory, categories }) {
   const h = product.history;
   return (
     <Modal onClose={onClose}>
@@ -784,6 +853,7 @@ function ProductModal({ product, supplier, onClose, openInvoice }) {
         <div><h1 style={{ marginBottom: 2 }}>{product.description}</h1><div className="mut">{supplier?.name}{product.code ? " · Κωδ. " + product.code : ""}{product.unit ? " · " + product.unit : ""}</div></div>
         <span className="sp" /><button className="x" onClick={onClose}>×</button>
       </div>
+      <div className="row mb"><span className="mut sm">Κατηγορία</span><CatSelect value={product.category} categories={categories} onChange={v => setCategory(product.key, v)} /></div>
       <div className="grid g4 mb">
         <div className="stat"><div className="l">Τελευταία</div><div className="v">{fmtPrice(product.last.price)}</div></div>
         <div className="stat"><div className="l">Από την πρώτη αγορά</div><div className="v"><ChangeBadge pct={pctChange(product.first.price, product.last.price)} /></div></div>
@@ -804,22 +874,39 @@ function ProductModal({ product, supplier, onClose, openInvoice }) {
   );
 }
 
-function ProductsPage({ products, supById, openProduct }) {
+function ProductsPage({ products, supById, openProduct, autoClassify }) {
+  const [busy, setBusy] = useState(false);
+  const uncat = products.filter(p => !p.category);
   const [q, setQ] = useState("");
   const [only, setOnly] = useState("all");
+  const [sup, setSup] = useState("");
   const list = products
     .filter(p => !q || norm(p.description + " " + p.code + " " + (supById[p.supplierId]?.name || "")).includes(norm(q)))
+    .filter(p => !sup || p.supplierId === sup)
     .filter(p => only === "all" || (only === "up" ? p.change > 0.05 : p.change < -0.05))
-    .sort((a, b) => b.last.date.localeCompare(a.last.date));
+    .sort((a, b) => a.description.localeCompare(b.description, "el"));
+  const sups = [...new Set(products.map(p => p.supplierId))].map(id => supById[id]).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, "el"));
   return (
     <>
-      <h1>Είδη & τιμές</h1><p className="sub">Κάθε είδος με την τελευταία τιμή αγοράς και τη μεταβολή της.</p>
+      <h1>Είδη & τιμές</h1><p className="sub">Τα είδη ανά κατηγορία. Άνοιξε μια κατηγορία για να δεις τιμές και μεταβολές.</p>
+      {uncat.length > 0 && (
+        <div className="alert i mb" style={{ alignItems: "center" }}>
+          <span>{uncat.length} {uncat.length === 1 ? "είδος δεν έχει" : "είδη δεν έχουν"} κατηγορία.</span><span className="sp" />
+          <button className="btn sm p" disabled={busy} onClick={async () => { setBusy(true); await autoClassify(uncat); setBusy(false); }}>{busy ? "Κατάταξη…" : "Αυτόματη κατηγοριοποίηση"}</button>
+        </div>
+      )}
       <div className="card grid">
         <div className="row">
-          <input className="in" style={{ maxWidth: 320 }} placeholder="Είδος, κωδικός ή προμηθευτής…" value={q} onChange={e => setQ(e.target.value)} />
+          <input className="in" style={{ maxWidth: 280 }} placeholder="Αναζήτηση είδους ή κωδικού…" value={q} onChange={e => setQ(e.target.value)} />
+          <select className="in" style={{ maxWidth: 240 }} value={sup} onChange={e => setSup(e.target.value)}>
+            <option value="">Όλοι οι προμηθευτές</option>{sups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
           <div className="chips">{[["all", "Όλα"], ["up", "Σε αύξηση"], ["down", "Σε μείωση"]].map(([k, l]) => <button key={k} className={"chip" + (only === k ? " on" : "")} onClick={() => setOnly(k)}>{l}</button>)}</div>
         </div>
-        <ProductsTable products={list} supById={supById} onOpen={openProduct} showSupplier />
+        {!list.length ? <div className="empty">{products.length ? "Κανένα είδος με αυτά τα φίλτρα." : "Δεν υπάρχουν είδη ακόμα."}</div> :
+          <CatGroups items={list} forceOpen={!!q} summary={prodSummary}>
+            {l => <ProductsTable products={l} supById={supById} onOpen={openProduct} showSupplier={!sup} />}
+          </CatGroups>}
       </div>
     </>
   );
@@ -828,31 +915,53 @@ function ProductsPage({ products, supById, openProduct }) {
 /* =========================================================
    Ειδοποιήσεις
    ========================================================= */
+function AlertsTable({ list, supById, openProduct }) {
+  return (
+    <div className="tbl"><table>
+      <thead><tr><th>Είδος</th><th className="hide-m">Προμηθευτής</th><th className="r">Από → σε</th><th className="r">Μεταβολή</th><th className="r hide-m">Επίπτωση*</th></tr></thead>
+      <tbody>{list.map(a => (
+        <tr key={a.id} className="click" style={a.read ? {} : { background: "#fffdf5" }} onClick={() => openProduct(a.productKey)}>
+          <td>{!a.read && <span className="badge b-warn" style={{ marginRight: 6 }}>Νέα</span>}{a.description}<div className="mut sm">{fmtDate(a.oldDate)} → {fmtDate(a.newDate)}</div></td>
+          <td className="sm hide-m">{supById[a.supplierId]?.name}</td>
+          <td className="r nw sm">{fmtPrice(a.oldPrice)} → <b>{fmtPrice(a.newPrice)}</b></td>
+          <td className="r"><ChangeBadge pct={a.pct} /></td>
+          <td className="r nw hide-m">{a.qty ? fmtEur((a.newPrice - a.oldPrice) * a.qty) : "—"}</td>
+        </tr>
+      ))}</tbody>
+    </table></div>
+  );
+}
+
 function AlertsPage({ data, supById, openProduct, markAllRead, settings }) {
-  const list = [...data.alerts].sort((a, b) => b.createdAt - a.createdAt);
-  const unread = list.filter(a => !a.read).length;
+  const [only, setOnly] = useState("up");
+  const all = [...data.alerts].sort((a, b) => b.newDate.localeCompare(a.newDate) || b.createdAt - a.createdAt);
+  const list = all.filter(a => only === "all" || (only === "up" ? a.pct > 0 : only === "down" ? a.pct < 0 : !a.read));
+  const unread = all.filter(a => !a.read).length;
+  const impact = sum(all.filter(a => a.pct > 0 && a.qty), a => (a.newPrice - a.oldPrice) * a.qty);
+  const summary = l => {
+    const n = l.filter(a => !a.read).length, up = l.filter(a => a.pct > 0);
+    const avg = up.length ? sum(up, a => a.pct) / up.length : null;
+    return <span className="row" style={{ gap: 6 }}>{n > 0 && <span className="badge b-warn">{n} νέες</span>}{avg != null && <span className="badge b-up">μ.ό. +{avg.toLocaleString("el-GR", { maximumFractionDigits: 1 })}%</span>}</span>;
+  };
   return (
     <>
       <div className="row" style={{ alignItems: "flex-start" }}>
-        <div><h1>Ειδοποιήσεις τιμών</h1><p className="sub">Κάθε αλλαγή από {settings.threshold}% και πάνω σε σχέση με την προηγούμενη αγορά.</p></div>
+        <div><h1>Ειδοποιήσεις τιμών</h1><p className="sub">Αλλαγές από {settings.threshold}% και πάνω σε σχέση με την προηγούμενη αγορά, ανά κατηγορία.</p></div>
         <span className="sp" />{unread > 0 && <button className="btn" onClick={markAllRead}>Σήμανση όλων ως αναγνωσμένες</button>}
       </div>
-      <div className="card">
-        {!list.length ? <div className="empty">Καμία αλλαγή τιμής ακόμα. Οι ειδοποιήσεις εμφανίζονται όταν ένα είδος αγοραστεί ξανά σε διαφορετική τιμή.</div> : (
-          <div className="tbl"><table>
-            <thead><tr><th>Είδος</th><th className="hide-m">Προμηθευτής</th><th className="r">Από → σε</th><th className="r">Μεταβολή</th><th className="r hide-m">Επίπτωση*</th></tr></thead>
-            <tbody>{list.map(a => (
-              <tr key={a.id} className="click" style={a.read ? {} : { background: "#fffdf5" }} onClick={() => openProduct(a.productKey)}>
-                <td>{!a.read && <span className="badge b-warn" style={{ marginRight: 6 }}>Νέα</span>}{a.description}<div className="mut sm">{fmtDate(a.oldDate)} → {fmtDate(a.newDate)}</div></td>
-                <td className="sm hide-m">{supById[a.supplierId]?.name}</td>
-                <td className="r nw sm">{fmtPrice(a.oldPrice)} → <b>{fmtPrice(a.newPrice)}</b></td>
-                <td className="r"><ChangeBadge pct={a.pct} /></td>
-                <td className="r nw hide-m">{a.qty ? fmtEur((a.newPrice - a.oldPrice) * a.qty) : "—"}</td>
-              </tr>
-            ))}</tbody>
-          </table></div>
-        )}
-        {list.length > 0 && <div className="mut sm mt">* Διαφορά κόστους για την ποσότητα αυτού του τιμολογίου.</div>}
+      {all.length > 0 && (
+        <div className="grid g3 mb">
+          <div className="card stat"><div className="l">Αυξήσεις</div><div className="v" style={{ color: "var(--up)" }}>{all.filter(a => a.pct > 0).length}</div></div>
+          <div className="card stat"><div className="l">Μειώσεις</div><div className="v" style={{ color: "var(--down)" }}>{all.filter(a => a.pct < 0).length}</div></div>
+          <div className="card stat"><div className="l">Επιπλέον κόστος από αυξήσεις*</div><div className="v">{fmtEur(impact)}</div></div>
+        </div>
+      )}
+      <div className="card grid">
+        {all.length > 0 && <div className="chips">{[["up", "Αυξήσεις"], ["down", "Μειώσεις"], ["new", `Νέες (${unread})`], ["all", "Όλες"]].map(([k, l]) => <button key={k} className={"chip" + (only === k ? " on" : "")} onClick={() => setOnly(k)}>{l}</button>)}</div>}
+        {!all.length ? <div className="empty">Καμία αλλαγή τιμής ακόμα. Οι ειδοποιήσεις εμφανίζονται όταν ένα είδος αγοραστεί ξανά σε διαφορετική τιμή.</div>
+          : !list.length ? <div className="empty">Καμία ειδοποίηση με αυτό το φίλτρο.</div>
+          : <CatGroups items={list} summary={summary}>{l => <AlertsTable list={l} supById={supById} openProduct={openProduct} />}</CatGroups>}
+        {all.length > 0 && <div className="mut sm">* Διαφορά κόστους για την ποσότητα του τιμολογίου όπου άλλαξε η τιμή.</div>}
       </div>
     </>
   );
@@ -909,7 +1018,7 @@ function Dashboard({ data, supById, products, go, openSupplier, openProduct }) {
 /* =========================================================
    Ρυθμίσεις
    ========================================================= */
-function SettingsPage({ settings, saveSettings, data, reload, toast }) {
+function SettingsPage({ settings, saveSettings, data, reload, toast, products, renameCategory }) {
   const [s, setS] = useState(settings);
   const impRef = useRef();
   async function doExport() {
@@ -936,10 +1045,26 @@ function SettingsPage({ settings, saveSettings, data, reload, toast }) {
         <h2>Η επιχείρησή μου</h2>
         <div className="fgrid">
           <Field label="Επωνυμία" wide value={s.businessName} onChange={v => setS(x => ({ ...x, businessName: v }))} />
+          <Field label="Είδος επιχείρησης" value={s.businessType} placeholder="π.χ. Ταβέρνα, Κομμωτήριο" onChange={v => setS(x => ({ ...x, businessType: v }))} hint="Βοηθά στη δημιουργία κατάλληλων κατηγοριών" />
           <Field label="ΑΦΜ" value={s.ownAfm} inputMode="numeric" onChange={v => setS(x => ({ ...x, ownAfm: v.replace(/\D/g, "") }))} invalid={s.ownAfm && !validAfm(s.ownAfm)} hint="Βοηθά την ανάγνωση να μη μπερδεύει εσένα με τον προμηθευτή" />
           <Field label="Ειδοποίηση από μεταβολή %" inputMode="decimal" value={numStr(s.threshold)} onChange={v => setS(x => ({ ...x, threshold: v }))} />
         </div>
-        <div className="row mt"><span className="sp" /><button className="btn p" onClick={() => { saveSettings({ ...s, threshold: parseNum(s.threshold) ?? 1 }); toast("Αποθηκεύτηκε"); }}>Αποθήκευση</button></div>
+        <div className="row mt"><span className="sp" /><button className="btn p" onClick={() => { saveSettings({ ...settings, businessName: s.businessName, businessType: (s.businessType || "").trim(), ownAfm: s.ownAfm, threshold: parseNum(s.threshold) ?? 1 }); toast("Αποθηκεύτηκε"); }}>Αποθήκευση</button></div>
+      </div>
+      <div className="card mb">
+        <h2>Κατηγορίες ειδών</h2>
+        <p className="mut sm" style={{ marginTop: 0 }}>Δημιουργούνται αυτόματα από τα τιμολόγια. Μετονόμασε μια κατηγορία με όνομα που ήδη υπάρχει για να τις συγχωνεύσεις.</p>
+        {!(settings.categories || []).length ? <div className="mut sm">Δεν υπάρχουν κατηγορίες ακόμα.</div> : (
+          <table><tbody>{[...settings.categories].sort((a, b) => a.localeCompare(b, "el")).map(c => (
+            <tr key={c}>
+              <td>{c}</td><td className="r mut sm nw">{products.filter(p => p.category === c).length} είδη</td>
+              <td className="r nw">
+                <button className="btn sm" onClick={() => { const v = prompt("Νέο όνομα για «" + c + "»:", c); if (v && v.trim() && v.trim() !== c) renameCategory(c, v); }}>Μετονομασία</button>{" "}
+                <button className="btn sm d" onClick={() => { if (confirm("Διαγραφή της κατηγορίας «" + c + "»; Τα είδη της θα μείνουν χωρίς κατηγορία.")) renameCategory(c, ""); }}>Διαγραφή</button>
+              </td>
+            </tr>
+          ))}</tbody></table>
+        )}
       </div>
       <div className="card mb">
         <h2>Αντίγραφα ασφαλείας</h2>
@@ -960,7 +1085,7 @@ function SettingsPage({ settings, saveSettings, data, reload, toast }) {
 /* =========================================================
    Εφαρμογή
    ========================================================= */
-const DEFAULT_SETTINGS = { id: "settings", businessName: "", ownAfm: "", threshold: 1 };
+const DEFAULT_SETTINGS = { id: "settings", businessName: "", businessType: "", ownAfm: "", threshold: 1, categories: [], productCats: {}, readAlerts: [] };
 const NAV = [["home", "Αρχική", "home"], ["invoices", "Τιμολόγια", "doc"], ["suppliers", "Προμηθευτές", "truck"], ["products", "Είδη & τιμές", "box"], ["alerts", "Ειδοποιήσεις", "bell"], ["settings", "Ρυθμίσεις", "gear"]];
 
 function App() {
@@ -981,7 +1106,7 @@ function App() {
   useEffect(() => { if (!toastMsg) return; const t = setTimeout(() => setToastMsg(""), 2600); return () => clearTimeout(t); }, [toastMsg]);
 
   const supById = useMemo(() => Object.fromEntries(data.suppliers.map(s => [s.id, s])), [data.suppliers]);
-  const products = useMemo(() => buildProducts(data.invoices), [data.invoices]);
+  const products = useMemo(() => buildProducts(data.invoices, settings.productCats || {}), [data.invoices, settings.productCats]);
   const prodByKey = useMemo(() => Object.fromEntries(products.map(p => [p.key, p])), [products]);
   const alerts = useMemo(() => {
     const readSet = new Set(settings.readAlerts || []);
@@ -1001,10 +1126,13 @@ function App() {
     await dbPut("suppliers", sup);
     const fileIds = [];
     for (const f of files) { const id = uid(); await dbPut("files", { id, blob: f.blob, mimeType: f.mimeType }); fileIds.push(id); }
+    const knownCats = settings.categories || [];
     const lines = draft.lines.filter(l => (l.description || "").trim() || (l.code || "").trim()).map(l => ({
       code: (l.code || "").trim(), description: (l.description || "").trim(), quantity: parseNum(l.quantity), unit: (l.unit || "").trim(),
       unitPrice: parseNum(l.unitPrice), discountPct: parseNum(l.discountPct), net: parseNum(l.net), vatPct: parseNum(l.vatPct),
+      category: canonCat(l.category, knownCats),
     }));
+    const newCats = [...new Set(lines.map(l => l.category).filter(c => c && !knownCats.includes(c)))];
     const net = parseNum(draft.invoice.net) ?? (lines.length ? Math.round(sum(lines, l => l.net) * 100) / 100 : null);
     const vat = parseNum(draft.invoice.vat);
     const total = parseNum(draft.invoice.total) ?? (net != null && vat != null ? net + vat : net);
@@ -1013,8 +1141,9 @@ function App() {
       net, vat, total, paymentMethod: draft.invoice.paymentMethod.trim(), dueDate: draft.invoice.dueDate || "", lines, fileIds, notes: draft.notes || "", createdAt: Date.now(),
     };
     await dbPut("invoices", inv);
+    if (newCats.length) await dbPut("meta", { ...settings, id: "settings", categories: [...knownCats, ...newCats] });
     await reload();
-    const newAlerts = buildAlerts(buildProducts([...data.invoices, inv]), Number(settings.threshold) || 0).filter(a => a.invoiceId === inv.id);
+    const newAlerts = buildAlerts(buildProducts([...data.invoices, inv], settings.productCats || {}), Number(settings.threshold) || 0).filter(a => a.invoiceId === inv.id);
     return { inv, alerts: newAlerts };
   }
 
@@ -1026,6 +1155,38 @@ function App() {
     setInvoiceId(null); await reload(); setToastMsg("Το τιμολόγιο διαγράφηκε");
   }
   async function markAllRead() { await dbPut("meta", { ...settings, id: "settings", readAlerts: alerts.map(a => a.id) }); await reload(); }
+  async function setCategory(key, cat) {
+    const cats = settings.categories || [], c = canonCat(cat, cats);
+    await dbPut("meta", { ...settings, id: "settings", productCats: { ...(settings.productCats || {}), [key]: c }, categories: c && !cats.includes(c) ? [...cats, c] : cats });
+    await reload(); setToastMsg("Η κατηγορία άλλαξε");
+  }
+  // Στέλνει τις περιγραφές (μόνο κείμενο) στο Gemini και αποθηκεύει τις κατηγορίες που πρότεινε
+  async function autoClassify(list) {
+    try {
+      const cats = [...(settings.categories || [])];
+      const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "classify", items: list.map(p => p.description), categories: cats, businessType: settings.businessType || "" }) });
+      const j = await res.json();
+      if (!res.ok || j.error) throw new Error(j.error || "Σφάλμα");
+      const pc = { ...(settings.productCats || {}) };
+      for (const a of j.result.assignments || []) {
+        const p = list[a.i]; if (!p || !a.category) continue;
+        const c = canonCat(a.category, cats); if (!cats.includes(c)) cats.push(c);
+        pc[p.key] = c;
+      }
+      await dbPut("meta", { ...settings, id: "settings", productCats: pc, categories: cats });
+      await reload(); setToastMsg("Τα είδη κατατάχθηκαν");
+    } catch (e) { alert("Η κατηγοριοποίηση απέτυχε: " + e.message); }
+  }
+  // Μετονομασία (ή συγχώνευση, αν το νέο όνομα υπάρχει ήδη) / διαγραφή κατηγορίας
+  async function renameCategory(from, to) {
+    const cats = settings.categories || [];
+    to = (to || "").trim(); if (to) to = canonCat(to, cats.filter(c => c !== from));
+    const newCats = [...new Set(cats.map(c => c === from ? to : c).filter(Boolean))];
+    const pc = Object.fromEntries(Object.entries(settings.productCats || {}).map(([k, v]) => [k, v === from ? to : v]));
+    for (const inv of data.invoices) if (inv.lines.some(l => l.category === from)) await dbPut("invoices", { ...inv, lines: inv.lines.map(l => l.category === from ? { ...l, category: to } : l) });
+    await dbPut("meta", { ...settings, id: "settings", categories: newCats, productCats: pc });
+    await reload(); setToastMsg(to ? "Η κατηγορία ενημερώθηκε" : "Η κατηγορία διαγράφηκε");
+  }
   async function saveSettings(s) { await dbPut("meta", { ...s, id: "settings" }); await reload(); }
   async function updateSupplier(s) { await dbPut("suppliers", s); await reload(); setToastMsg("Αποθηκεύτηκε"); }
 
@@ -1041,9 +1202,9 @@ function App() {
   else if (page === "suppliers") content = supplier
     ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} />
     : <SuppliersPage data={vdata} openSupplier={openSupplier} />;
-  else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} />;
+  else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} autoClassify={autoClassify} />;
   else if (page === "alerts") content = <AlertsPage data={vdata} supById={supById} settings={settings} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
-  else if (page === "settings") content = <SettingsPage settings={settings} saveSettings={saveSettings} data={vdata} reload={reload} toast={setToastMsg} />;
+  else if (page === "settings") content = <SettingsPage products={products} renameCategory={renameCategory} settings={settings} saveSettings={saveSettings} data={vdata} reload={reload} toast={setToastMsg} />;
   else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} />;
 
   return (
@@ -1073,7 +1234,7 @@ function App() {
         ))}
       </nav>
       {openInv && <InvoiceModal inv={openInv} supplier={supById[openInv.supplierId]} onClose={() => setInvoiceId(null)} onDelete={deleteInvoice} openSupplier={openSupplier} />}
-      {openProd && <ProductModal product={openProd} supplier={supById[openProd.supplierId]} onClose={() => setProductKeyOpen(null)} openInvoice={id => { setProductKeyOpen(null); setInvoiceId(id); }} />}
+      {openProd && <ProductModal product={openProd} supplier={supById[openProd.supplierId]} onClose={() => setProductKeyOpen(null)} openInvoice={id => { setProductKeyOpen(null); setInvoiceId(id); }} setCategory={setCategory} categories={settings.categories || []} />}
       {toastMsg && <div className="toast">{toastMsg}</div>}
     </>
   );

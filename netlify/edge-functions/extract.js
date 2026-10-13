@@ -1,8 +1,20 @@
 // Ανάγνωση τιμολογίου με Gemini.
-// POST /api/extract  body: { files: [{ mimeType, data(base64) }], ownAfm?: "123456789" }
+// POST /api/extract  body: { files: [{ mimeType, data(base64) }], ownAfm?, categories?: [..], businessType? }
+// POST /api/extract  body: { mode: "classify", items: ["περιγραφή", ...], categories?: [..], businessType? }
 // Απαιτεί env var GEMINI_API_KEY στο Netlify. Προαιρετικά GEMINI_MODEL (default gemini-3.8-flash).
 
 const S = (type) => ({ type, nullable: true });
+
+const clean = (s, n = 60) => String(s || "").replace(/[\r\n\t]+/g, " ").trim().slice(0, n);
+
+// Οδηγίες κατηγοριοποίησης: οι κατηγορίες είναι της κάθε επιχείρησης, δεν υπάρχει έτοιμη λίστα.
+function categoryRules(categories, businessType) {
+  const list = categories.length ? categories.map((c) => `"${c}"`).join(", ") : "(καμία ακόμα)";
+  return `Κατηγορίες ειδών της επιχείρησης${businessType ? ` (είδος επιχείρησης: ${businessType})` : ""}: ${list}.
+- Βάλε κάθε είδος σε μία από τις υπάρχουσες κατηγορίες, γραμμένη ΑΚΡΙΒΩΣ όπως παραπάνω, αν ταιριάζει λογικά.
+- Αν δεν ταιριάζει καμία, δημιούργησε νέα κατηγορία: σύντομη (1–3 λέξεις), στα ελληνικά, γενική και χρήσιμη για αυτό το είδος επιχείρησης (π.χ. για εστιατόριο "Γαλακτοκομικά", για κομμωτήριο "Βαφές μαλλιών").
+- Προτίμησε λίγες, γενικές κατηγορίες αντί για πολλές μικρές. Μην φτιάχνεις κατηγορία για ένα μόνο προϊόν αν χωράει σε γενικότερη.`;
+}
 
 const SCHEMA = {
   type: "OBJECT",
@@ -45,6 +57,7 @@ const SCHEMA = {
           discount_pct: S("NUMBER"),
           net_amount: S("NUMBER"),
           vat_pct: S("NUMBER"),
+          category: S("STRING"),
         },
       },
     },
@@ -53,8 +66,8 @@ const SCHEMA = {
   required: ["supplier", "invoice", "lines"],
 };
 
-function buildPrompt(ownAfm) {
-  return `Είσαι σύστημα εξαγωγής δεδομένων από ελληνικά παραστατικά αγορών (τιμολόγια, δελτία αποστολής-τιμολόγια, αποδείξεις) επιχειρήσεων εστίασης.
+function buildPrompt(ownAfm, categories, businessType) {
+  return `Είσαι σύστημα εξαγωγής δεδομένων από ελληνικά παραστατικά αγορών (τιμολόγια, δελτία αποστολής-τιμολόγια, αποδείξεις) επιχειρήσεων.
 Επέστρεψε ΜΟΝΟ JSON σύμφωνα με το schema.
 
 Κανόνες:
@@ -66,10 +79,21 @@ ${ownAfm ? `- Ο αγοραστής έχει ΑΦΜ ${ownAfm}. Αυτό το Α�
 - invoice.mark: ο ΜΑΡΚ myDATA αν είναι τυπωμένος (μακρύς αριθμός δίπλα στη λέξη ΜΑΡΚ), αλλιώς null.
 - net_total = σύνολο καθαρής αξίας χωρίς ΦΠΑ, vat_total = σύνολο ΦΠΑ, total = πληρωτέο σύνολο.
 - lines: μία εγγραφή για κάθε γραμμή είδους. code = κωδικός είδους όπως είναι τυπωμένος (null αν δεν υπάρχει). description = περιγραφή όπως γράφεται. unit = μονάδα μέτρησης (ΚΙΛ, ΤΕΜ, ΛΙΤ, ΚΙΒ κ.λπ.). unit_price = τιμή μονάδας ΧΩΡΙΣ ΦΠΑ. discount_pct = έκπτωση %. net_amount = καθαρή αξία γραμμής χωρίς ΦΠΑ. vat_pct = συντελεστής ΦΠΑ (π.χ. 13 ή 24).
+- category: η κατηγορία του είδους, σύμφωνα με τους κανόνες κατηγοριών παρακάτω.
 - Μην επινοείς τιμές ή κωδικούς. Αν κάτι δεν φαίνεται ή δεν διαβάζεται, βάλε null.
 - Αν υπάρχουν χειρόγραφες διορθώσεις τιμών ή ποσοτήτων, κράτα τις τυπωμένες τιμές και ανέφερε τη διόρθωση στο notes.
-- Αν οι εικόνες είναι πολλές σελίδες του ίδιου παραστατικού, συνδύασέ τες σε ένα αποτέλεσμα.`;
+- Αν οι εικόνες είναι πολλές σελίδες του ίδιου παραστατικού, συνδύασέ τες σε ένα αποτέλεσμα.
+
+${categoryRules(categories, businessType)}`;
 }
+
+const CLASSIFY_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    assignments: { type: "ARRAY", items: { type: "OBJECT", properties: { i: { type: "INTEGER" }, category: { type: "STRING" } }, required: ["i", "category"] } },
+  },
+  required: ["assignments"],
+};
 
 const DEFAULT_MODELS = "gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.5-flash";
 
@@ -90,17 +114,34 @@ async function work(request) {
     return json({ error: "Μη έγκυρο αίτημα." }, 400);
   }
 
-  const files = Array.isArray(body.files) ? body.files : [];
-  if (!files.length) return json({ error: "Δεν στάλθηκε αρχείο." }, 400);
-  if (files.length > 6) return json({ error: "Έως 6 σελίδες ανά τιμολόγιο." }, 400);
+  const categories = (Array.isArray(body.categories) ? body.categories : []).map((c) => clean(c, 40)).filter(Boolean).slice(0, 80);
+  const businessType = clean(body.businessType, 60);
+  let parts, schema;
 
-  const ownAfm = /^\d{9}$/.test(String(body.ownAfm || "")) ? String(body.ownAfm) : "";
-  const parts = [{ text: buildPrompt(ownAfm) }];
-  for (const f of files) {
-    if (!f || !ALLOWED.includes(f.mimeType) || typeof f.data !== "string" || !f.data.length) {
-      return json({ error: "Μη υποστηριζόμενος τύπος αρχείου. Δεκτά: JPG, PNG, WEBP, PDF." }, 400);
+  if (body.mode === "classify") {
+    // Μόνο κείμενο: γρήγορο και φθηνό
+    const items = (Array.isArray(body.items) ? body.items : []).map((x) => clean(x, 120)).slice(0, 300);
+    if (!items.length) return json({ error: "Δεν στάλθηκαν είδη." }, 400);
+    parts = [{ text: `Κατάταξε τα παρακάτω είδη που αγοράζει μια επιχείρηση σε κατηγορίες.
+${categoryRules(categories, businessType)}
+Επέστρεψε JSON: assignments = [{ i: αριθμός είδους, category }] για ΚΑΘΕ είδος.
+
+Είδη:
+${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
+    schema = CLASSIFY_SCHEMA;
+  } else {
+    const files = Array.isArray(body.files) ? body.files : [];
+    if (!files.length) return json({ error: "Δεν στάλθηκε αρχείο." }, 400);
+    if (files.length > 6) return json({ error: "Έως 6 σελίδες ανά τιμολόγιο." }, 400);
+    const ownAfm = /^\d{9}$/.test(String(body.ownAfm || "")) ? String(body.ownAfm) : "";
+    parts = [{ text: buildPrompt(ownAfm, categories, businessType) }];
+    for (const f of files) {
+      if (!f || !ALLOWED.includes(f.mimeType) || typeof f.data !== "string" || !f.data.length) {
+        return json({ error: "Μη υποστηριζόμενος τύπος αρχείου. Δεκτά: JPG, PNG, WEBP, PDF." }, 400);
+      }
+      parts.push({ inlineData: { mimeType: f.mimeType, data: f.data } });
     }
-    parts.push({ inlineData: { mimeType: f.mimeType, data: f.data } });
+    schema = SCHEMA;
   }
 
   // Σειρά μοντέλων: το πρώτο είναι το κύριο, τα υπόλοιπα εφεδρικά.
@@ -118,7 +159,7 @@ async function work(request) {
 
     let thinking = true;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const generationConfig = { temperature: 0, responseMimeType: "application/json", responseSchema: SCHEMA };
+      const generationConfig = { temperature: 0, responseMimeType: "application/json", responseSchema: schema };
       // Λίγη "σκέψη" = πιο γρήγορη απάντηση. Η εξαγωγή τιμολογίου δεν χρειάζεται βαθιά συλλογιστική.
       if (thinking) {
         if (/gemini-2\.5/.test(model)) generationConfig.thinkingConfig = { thinkingBudget: 0 };

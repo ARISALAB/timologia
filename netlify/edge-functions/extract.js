@@ -71,6 +71,8 @@ ${ownAfm ? `- Ο αγοραστής έχει ΑΦΜ ${ownAfm}. Αυτό το Α�
 - Αν οι εικόνες είναι πολλές σελίδες του ίδιου παραστατικού, συνδύασέ τες σε ένα αποτέλεσμα.`;
 }
 
+const DEFAULT_MODELS = "gemini-3.8-flash,gemini-3.5-flash,gemini-3.5-flash-lite";
+
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 const json = (obj, status = 200) =>
@@ -84,7 +86,6 @@ export default async (request) => {
 
   const key = Netlify.env.get("GEMINI_API_KEY");
   if (!key) return json({ error: "Λείπει το GEMINI_API_KEY στις ρυθμίσεις του Netlify (Environment variables)." }, 500);
-  const model = Netlify.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
 
   let body;
   try {
@@ -106,45 +107,71 @@ export default async (request) => {
     parts.push({ inlineData: { mimeType: f.mimeType, data: f.data } });
   }
 
-  const generationConfig = {
-    temperature: 0,
-    responseMimeType: "application/json",
-    responseSchema: SCHEMA,
-  };
-  // Στα μοντέλα 2.5 κλείνουμε το "thinking" για ταχύτητα και χαμηλότερο κόστος.
-  if (model.includes("2.5")) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  // Σειρά μοντέλων: το πρώτο είναι το κύριο, τα υπόλοιπα εφεδρικά.
+  // Με GEMINI_MODEL στο Netlify (π.χ. "gemini-3.8-flash,gemini-3.5-flash") αλλάζει χωρίς αλλαγή κώδικα.
+  const models = (Netlify.env.get("GEMINI_MODEL") || DEFAULT_MODELS)
+    .split(",").map((m) => m.trim()).filter(Boolean);
 
-  let res, data;
-  try {
-    res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-        body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig }),
+  const started = Date.now();
+  let lastStatus = 0, lastMsg = "";
+
+  for (const model of models) {
+    // Κάθε μοντέλο: μία προσπάθεια + μία επανάληψη αν είναι υπερφορτωμένο.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (Date.now() - started > 28000) break; // μένουμε κάτω από το όριο χρόνου του Netlify
+
+      const generationConfig = { temperature: 0, responseMimeType: "application/json", responseSchema: SCHEMA };
+      if (model.includes("2.5")) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+
+      let res, data;
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 25000);
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+            body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig }),
+            signal: ctrl.signal,
+          }
+        );
+        clearTimeout(timer);
+        data = await res.json().catch(() => null);
+      } catch (e) {
+        lastStatus = 504; lastMsg = "Το Gemini άργησε να απαντήσει.";
+        break; // επόμενο μοντέλο
       }
-    );
-    data = await res.json().catch(() => null);
-  } catch (e) {
-    return json({ error: "Δεν ήταν δυνατή η σύνδεση με το Gemini." }, 502);
-  }
 
-  if (!res.ok) {
-    if (res.status === 429) {
-      return json({ error: "Έφτασες το όριο του δωρεάν Gemini. Δοκίμασε ξανά σε ένα λεπτό." }, 429);
+      if (res.ok) {
+        const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+        try {
+          return json({ result: JSON.parse(text), model, usage: data?.usageMetadata || null });
+        } catch {
+          lastStatus = 502; lastMsg = "Το Gemini δεν επέστρεψε έγκυρα δεδομένα. Δοκίμασε πιο καθαρή φωτογραφία.";
+          break;
+        }
+      }
+
+      lastStatus = res.status;
+      lastMsg = data?.error?.message || `Σφάλμα Gemini (${res.status})`;
+
+      // Υπερφόρτωση / προσωρινό σφάλμα: μικρή αναμονή και ξανά στο ίδιο μοντέλο.
+      if ((res.status === 503 || res.status === 500) && attempt === 0) {
+        await new Promise((r) => setTimeout(r, 1500));
+        continue;
+      }
+      // 429 (όριο), 404 (μοντέλο μη διαθέσιμο), 503 ξανά κ.λπ.: πάμε στο επόμενο μοντέλο.
+      if ([400, 403].includes(res.status) && !/model/i.test(lastMsg)) {
+        return json({ error: lastMsg }, 502); // πρόβλημα αιτήματος/κλειδιού, όχι μοντέλου
+      }
+      break;
     }
-    return json({ error: data?.error?.message || `Σφάλμα Gemini (${res.status})` }, 502);
   }
 
-  const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
-  let result;
-  try {
-    result = JSON.parse(text);
-  } catch {
-    return json({ error: "Το Gemini δεν επέστρεψε έγκυρα δεδομένα. Δοκίμασε πιο καθαρή φωτογραφία." }, 502);
-  }
-
-  return json({ result, model, usage: data?.usageMetadata || null });
+  if (lastStatus === 429) return json({ error: "Έφτασες το όριο του δωρεάν Gemini. Δοκίμασε ξανά σε ένα λεπτό." }, 429);
+  if (lastStatus === 503 || lastStatus === 500) return json({ error: "Το Gemini είναι προσωρινά υπερφορτωμένο. Δοκίμασε ξανά σε λίγο." }, 503);
+  return json({ error: lastMsg || "Αποτυχία ανάγνωσης." }, 502);
 };
 
 export const config = { path: "/api/extract" };

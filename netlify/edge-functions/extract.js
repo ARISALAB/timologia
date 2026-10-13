@@ -77,7 +77,11 @@ ${ownAfm ? `- Ο αγοραστής έχει ΑΦΜ ${ownAfm}. Αυτό το Α�
 - Ημερομηνίες σε μορφή YYYY-MM-DD (π.χ. 05/03/2026 → 2026-03-05).
 - invoice.number: ο αριθμός παραστατικού μαζί με τη σειρά αν υπάρχει (π.χ. "Α 1234"). invoice.type: το είδος παραστατικού όπως είναι τυπωμένο.
 - invoice.mark: ο ΜΑΡΚ myDATA αν είναι τυπωμένος (μακρύς αριθμός δίπλα στη λέξη ΜΑΡΚ), αλλιώς null.
-- net_total = σύνολο καθαρής αξίας χωρίς ΦΠΑ, vat_total = σύνολο ΦΠΑ, total = πληρωτέο σύνολο.
+- net_total = σύνολο καθαρής αξίας χωρίς ΦΠΑ, vat_total = σύνολο ΦΠΑ, total = συνολική αξία ΑΥΤΟΥ του παραστατικού με ΦΠΑ (μπορεί να γράφεται "Σύνολο", "Γενικό σύνολο", "Πληρωτέο", "Ποσό πληρωμής", "Συνολικό ποσό"). Αν υπάρχει προηγούμενο υπόλοιπο ή οφειλή από παλαιότερο λογαριασμό, ΜΗΝ το προσθέτεις στο total.
+- Τα net_total, vat_total και total ΠΡΕΠΕΙ να συμπληρώνονται. Αν φαίνονται μόνο δύο από τα τρία, υπολόγισε το τρίτο (total = net_total + vat_total).
+- Λογαριασμοί υπηρεσιών (τηλεφωνία, ρεύμα, νερό, ενοίκια, συνδρομές) χωρίς αναλυτικά είδη: βάλε ΜΙΑ γραμμή με description την υπηρεσία (π.χ. "Τηλεπικοινωνιακές υπηρεσίες"), quantity 1, unit_price και net_amount = net_total.
+- supplier.address: μόνο οδός, αριθμός, ΤΚ, πόλη. ΟΧΙ τηλέφωνα, fax, ΑΦΜ, ΓΕΜΗ ή άλλα στοιχεία.
+- Αν η ημερομηνία έκδοσης δεν φαίνεται, βάλε null (όχι τη σημερινή).
 - lines: μία εγγραφή για κάθε γραμμή είδους. code = κωδικός είδους όπως είναι τυπωμένος (null αν δεν υπάρχει). description = περιγραφή όπως γράφεται. unit = μονάδα μέτρησης (ΚΙΛ, ΤΕΜ, ΛΙΤ, ΚΙΒ κ.λπ.). unit_price = τιμή μονάδας ΧΩΡΙΣ ΦΠΑ. discount_pct = έκπτωση %. net_amount = καθαρή αξία γραμμής χωρίς ΦΠΑ. vat_pct = συντελεστής ΦΠΑ (π.χ. 13 ή 24).
 - category: η κατηγορία του είδους, σύμφωνα με τους κανόνες κατηγοριών παρακάτω.
 - Μην επινοείς τιμές ή κωδικούς. Αν κάτι δεν φαίνεται ή δεν διαβάζεται, βάλε null.
@@ -85,6 +89,25 @@ ${ownAfm ? `- Ο αγοραστής έχει ΑΦΜ ${ownAfm}. Αυτό το Α�
 - Αν οι εικόνες είναι πολλές σελίδες του ίδιου παραστατικού, συνδύασέ τες σε ένα αποτέλεσμα.
 
 ${categoryRules(categories, businessType)}`;
+}
+
+// Αν το μοντέλο έδωσε 2 από τα 3 ποσά, υπολογίζουμε το τρίτο. Αν δεν έδωσε γραμμές, μία γραμμή με την καθαρή αξία.
+function fixTotals(r) {
+  const inv = r && r.invoice; if (!inv) return r;
+  const n = (v) => (typeof v === "number" && isFinite(v) ? v : null);
+  let net = n(inv.net_total), vat = n(inv.vat_total), tot = n(inv.total);
+  const r2 = (x) => Math.round(x * 100) / 100;
+  if (tot == null && net != null && vat != null) tot = r2(net + vat);
+  if (net == null && tot != null && vat != null) net = r2(tot - vat);
+  if (vat == null && tot != null && net != null) vat = r2(tot - net);
+  if (net == null && Array.isArray(r.lines) && r.lines.length) {
+    const s = r.lines.reduce((a, l) => a + (n(l.net_amount) || 0), 0); if (s > 0) net = r2(s);
+  }
+  Object.assign(inv, { net_total: net, vat_total: vat, total: tot });
+  if ((!Array.isArray(r.lines) || !r.lines.length) && net != null) {
+    r.lines = [{ code: null, description: inv.type || "Υπηρεσίες", quantity: 1, unit: null, unit_price: net, discount_pct: null, net_amount: net, vat_pct: null, category: null }];
+  }
+  return r;
 }
 
 const CLASSIFY_SCHEMA = {
@@ -192,7 +215,8 @@ ${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
       if (res.ok) {
         const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
         try {
-          return json({ result: JSON.parse(text), model, seconds: secs, tried, usage: data?.usageMetadata || null });
+          const result = fixTotals(JSON.parse(text));
+          return json({ result, model, seconds: secs, tried, usage: data?.usageMetadata || null });
         } catch {
           lastStatus = 502; lastMsg = "Το Gemini δεν επέστρεψε έγκυρα δεδομένα. Δοκίμασε πιο καθαρή φωτογραφία.";
           tried.push(`${model}: άκυρο JSON`);

@@ -364,8 +364,19 @@ function resultToDraft(r) {
   const lines = (r.lines || []).map(l => ({ id: uid(), code: l.code || "", description: l.description || "", quantity: numStr(l.quantity), unit: l.unit || "", unitPrice: numStr(l.unit_price), discountPct: numStr(l.discount_pct), net: numStr(l.net_amount), vatPct: numStr(l.vat_pct), category: l.category || "" }));
   return {
     supplier: { afm: (s.afm || "").replace(/\D/g, ""), name: s.name || "", doy: s.doy || "", address: s.address || "", phone: s.phone || "", email: s.email || "" },
-    invoice: { number: i.number || "", date: /^\d{4}-\d{2}-\d{2}$/.test(i.date || "") ? i.date : todayISO(), type: i.type || "", mark: i.mark || "", net: numStr(i.net_total), vat: numStr(i.vat_total), total: numStr(i.total), paymentMethod: i.payment_method || "", dueDate: /^\d{4}-\d{2}-\d{2}$/.test(i.due_date || "") ? i.due_date : "" },
+    invoice: { number: i.number || "", date: /^\d{4}-\d{2}-\d{2}$/.test(i.date || "") ? i.date : "", type: i.type || "", mark: i.mark || "", net: numStr(i.net_total), vat: numStr(i.vat_total), total: numStr(i.total), paymentMethod: i.payment_method || "", dueDate: /^\d{4}-\d{2}-\d{2}$/.test(i.due_date || "") ? i.due_date : "" },
     lines: lines.length ? lines : [emptyLine()], notes: r.notes || "",
+  };
+}
+
+// Για επεξεργασία αποθηκευμένου τιμολογίου
+function invoiceToDraft(inv, sup) {
+  sup = sup || {};
+  return {
+    supplier: { afm: sup.afm || "", name: sup.name || "", doy: sup.doy || "", address: sup.address || "", phone: sup.phone || "", email: sup.email || "" },
+    invoice: { number: inv.number || "", date: inv.date || "", type: inv.type || "", mark: inv.mark || "", net: numStr(inv.net), vat: numStr(inv.vat), total: numStr(inv.total), paymentMethod: inv.paymentMethod || "", dueDate: inv.dueDate || "" },
+    lines: inv.lines.length ? inv.lines.map(l => ({ id: uid(), code: l.code || "", description: l.description || "", quantity: numStr(l.quantity), unit: l.unit || "", unitPrice: numStr(l.unitPrice), discountPct: numStr(l.discountPct), net: numStr(l.net), vatPct: numStr(l.vatPct), category: l.category || "" })) : [emptyLine()],
+    notes: inv.notes || "",
   };
 }
 
@@ -398,7 +409,7 @@ function LinesEditor({ lines, onChange, categories = [] }) {
   );
 }
 
-function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, saving, onSave, onCancel, categories }) {
+function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, saving, onSave, onCancel, categories, readMeta, editing }) {
   const setS = (k, v) => setDraft(d => ({ ...d, supplier: { ...d.supplier, [k]: v } }));
   const setI = (k, v) => setDraft(d => ({ ...d, invoice: { ...d.invoice, [k]: v } }));
   const afm = draft.supplier.afm.replace(/\D/g, "");
@@ -407,10 +418,17 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
   const invNet = parseNum(draft.invoice.net);
   const mismatch = invNet != null && linesNet > 0 && Math.abs(linesNet - invNet) > 0.05;
   const totalCheck = (() => { const n = parseNum(draft.invoice.net), v = parseNum(draft.invoice.vat), t = parseNum(draft.invoice.total); return n != null && v != null && t != null && Math.abs(n + v - t) > 0.05; })();
+  const missing = [
+    !draft.supplier.name.trim() && "επωνυμία προμηθευτή",
+    !/^\d{4}-\d{2}-\d{2}$/.test(draft.invoice.date || "") && "ημερομηνία",
+    parseNum(draft.invoice.total) == null && "σύνολο",
+  ].filter(Boolean);
   return (
     <div className={previews.length ? "review" : ""}>
       {previews.length > 0 && <div className="preview">{previews.map((p, i) => p.url ? <img key={i} src={p.url} alt="" /> : <div key={i} className="card sm mut">PDF: {p.name}</div>)}</div>}
       <div className="grid">
+        {readMeta && <div className="mut sm">Διαβάστηκε από {readMeta.model}{readMeta.seconds != null ? ` σε ${readMeta.seconds}″` : ""}</div>}
+        {missing.length > 0 && <div className="alert e">Δεν διαβάστηκε: <b>{missing.join(", ")}</b>. Συμπλήρωσέ τα από το έγγραφο για να γίνει η αποθήκευση.</div>}
         {duplicate && <div className="alert e">⚠️ Υπάρχει ήδη τιμολόγιο {duplicate.number} από αυτόν τον προμηθευτή ({fmtDate(duplicate.date)}). Μήπως είναι διπλή καταχώρηση;</div>}
         {draft.notes && <div className="alert i">📝 {draft.notes}</div>}
         {(mismatch || totalCheck) && <div className="alert w">Έλεγξε τα ποσά: {mismatch && <>οι γραμμές αθροίζουν {fmtEur(linesNet)} ενώ η καθαρή αξία είναι {fmtEur(invNet)}. </>}{totalCheck && <>Καθαρή + ΦΠΑ δεν ισούται με το σύνολο.</>}</div>}
@@ -431,12 +449,12 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
           <h2>Παραστατικό</h2>
           <div className="fgrid">
             <Field label="Αριθμός" value={draft.invoice.number} onChange={v => setI("number", v)} />
-            <Field label="Ημερομηνία" type="date" value={draft.invoice.date} onChange={v => setI("date", v)} />
+            <Field label="Ημερομηνία" type="date" value={draft.invoice.date} onChange={v => setI("date", v)} invalid={!draft.invoice.date} />
             <Field label="Είδος" value={draft.invoice.type} onChange={v => setI("type", v)} />
             <Field label="ΜΑΡΚ" value={draft.invoice.mark} onChange={v => setI("mark", v)} />
             <Field label="Καθαρή αξία €" inputMode="decimal" value={draft.invoice.net} onChange={v => setI("net", v)} />
             <Field label="ΦΠΑ €" inputMode="decimal" value={draft.invoice.vat} onChange={v => setI("vat", v)} />
-            <Field label="Σύνολο €" inputMode="decimal" value={draft.invoice.total} onChange={v => setI("total", v)} />
+            <Field label="Σύνολο €" inputMode="decimal" value={draft.invoice.total} onChange={v => setI("total", v)} invalid={parseNum(draft.invoice.total) == null} />
             <Field label="Τρόπος πληρωμής" value={draft.invoice.paymentMethod} onChange={v => setI("paymentMethod", v)} />
           </div>
         </div>
@@ -449,7 +467,7 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
         <div className="row">
           <button className="btn" onClick={onCancel}>Ακύρωση</button>
           <span className="sp" />
-          <button className="btn p" disabled={saving || !draft.supplier.name.trim()} onClick={onSave}>{saving ? "Αποθήκευση…" : "Αποθήκευση τιμολογίου"}</button>
+          <button className="btn p" disabled={saving || missing.length > 0} onClick={onSave}>{saving ? "Αποθήκευση…" : editing ? "Αποθήκευση αλλαγών" : "Αποθήκευση τιμολογίου"}</button>
         </div>
       </div>
     </div>
@@ -469,10 +487,11 @@ function ReadingCard() {
     </div>
   );
 }
-function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
+function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onEditDone }) {
   const [files, setFiles] = useState([]);       // {id, blob, mimeType, url, name}
-  const [phase, setPhase] = useState("pick");   // pick | reading | review | done
-  const [draft, setDraft] = useState(null);
+  const [phase, setPhase] = useState(editInv ? "review" : "pick");   // pick | reading | review | done
+  const [draft, setDraft] = useState(() => editInv ? invoiceToDraft(editInv, data.suppliers.find(x => x.id === editInv.supplierId)) : null);
+  const [readMeta, setReadMeta] = useState(null);
   const [error, setError] = useState("");
   const [over, setOver] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -480,6 +499,15 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
   const camRef = useRef(), fileRef = useRef();
 
   useEffect(() => () => files.forEach(f => f.url && URL.revokeObjectURL(f.url)), []); // eslint-disable-line
+  // Σε επεξεργασία: φόρτωσε τις αποθηκευμένες φωτογραφίες για προβολή δίπλα στη φόρμα
+  useEffect(() => {
+    if (!editInv) return;
+    (async () => {
+      const out = [];
+      for (const id of editInv.fileIds || []) { const f = await dbGet("files", id); if (f) out.push({ id, blob: f.blob, mimeType: f.mimeType, url: f.mimeType === "application/pdf" ? null : URL.createObjectURL(f.blob), name: "PDF", stored: true }); }
+      setFiles(out);
+    })();
+  }, [editInv && editInv.id]); // eslint-disable-line
 
   async function addFiles(list) {
     setError("");
@@ -505,11 +533,11 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
       if (!ct.includes("application/json")) throw new Error("Η ανάγνωση δουλεύει μόνο όταν η εφαρμογή τρέχει στο Netlify (ή με netlify dev).");
       const j = await res.json();
       if (!res.ok || j.error) throw new Error((j.error || "Σφάλμα ανάγνωσης") + (j.tried && j.tried.length ? ` [${j.tried.join(" · ")}]` : ""));
-      setDraft(resultToDraft(j.result)); setPhase("review");
+      setDraft(resultToDraft(j.result)); setReadMeta({ model: j.model, seconds: j.seconds }); setPhase("review");
     } catch (e) { setError(e.message || String(e)); setPhase("pick"); }
   }
 
-  function reset() { files.forEach(f => f.url && URL.revokeObjectURL(f.url)); setFiles([]); setDraft(null); setPhase("pick"); setError(""); setDoneInfo(null); }
+  function reset() { if (editInv) { onEditDone(editInv.id); return; } setReadMeta(null); files.forEach(f => f.url && URL.revokeObjectURL(f.url)); setFiles([]); setDraft(null); setPhase("pick"); setError(""); setDoneInfo(null); }
 
   const matched = useMemo(() => {
     if (!draft) return null;
@@ -518,12 +546,15 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
   }, [draft, data.suppliers]);
   const duplicate = useMemo(() => {
     if (!draft || !matched || !draft.invoice.number) return null;
-    return data.invoices.find(i => i.supplierId === matched.id && norm(i.number) === norm(draft.invoice.number)) || null;
+    return data.invoices.find(i => i.supplierId === matched.id && norm(i.number) === norm(draft.invoice.number) && (!editInv || i.id !== editInv.id)) || null;
   }, [draft, matched, data.invoices]);
 
   async function save() {
     setSaving(true);
-    try { const r = await saveDraft(draft, files); setDoneInfo(r); setPhase("done"); }
+    try {
+      if (editInv) { await saveDraft(draft, [], editInv); onEditDone(editInv.id); return; }
+      const r = await saveDraft(draft, files); setDoneInfo(r); setPhase("done");
+    }
     catch (e) { setError("Αποτυχία αποθήκευσης: " + e.message); }
     setSaving(false);
   }
@@ -532,10 +563,10 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
 
   if (phase === "review") return (
     <>
-      <h1>Έλεγχος στοιχείων</h1>
-      <p className="sub">Δες ότι διαβάστηκαν σωστά και διόρθωσε ό,τι χρειάζεται πριν την αποθήκευση.</p>
+      <h1>{editInv ? "Επεξεργασία τιμολογίου" : "Έλεγχος στοιχείων"}</h1>
+      <p className="sub">{editInv ? "Διόρθωσε ό,τι χρειάζεται και αποθήκευσε." : "Δες ότι διαβάστηκαν σωστά και διόρθωσε ό,τι χρειάζεται πριν την αποθήκευση."}</p>
       {error && <div className="alert e mb">{error}</div>}
-      <ReviewForm categories={settings.categories || []} draft={draft} setDraft={setDraft} previews={files} duplicate={duplicate} matchedSupplier={matched} saving={saving} onSave={save} onCancel={reset} />
+      <ReviewForm editing={!!editInv} readMeta={readMeta} categories={settings.categories || []} draft={draft} setDraft={setDraft} previews={files} duplicate={duplicate} matchedSupplier={matched} saving={saving} onSave={save} onCancel={reset} />
     </>
   );
 
@@ -596,7 +627,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
 /* =========================================================
    Τιμολόγια
    ========================================================= */
-function InvoiceModal({ inv, supplier, onClose, onDelete, openSupplier }) {
+function InvoiceModal({ inv, supplier, onClose, onDelete, openSupplier, onEdit }) {
   const [urls, setUrls] = useState([]);
   useEffect(() => {
     let made = [];
@@ -627,7 +658,7 @@ function InvoiceModal({ inv, supplier, onClose, onDelete, openSupplier }) {
         <span className="mut">ΦΠΑ <b style={{ color: "var(--text)" }}>{fmtEur(inv.vat)}</b></span>
         <span style={{ fontSize: 18 }}>Σύνολο <b>{fmtEur(inv.total)}</b></span>
       </div>
-      <div className="row mt"><button className="btn d" onClick={() => { if (confirm("Διαγραφή αυτού του τιμολογίου;")) onDelete(inv.id); }}>Διαγραφή</button></div>
+      <div className="row mt"><button className="btn" onClick={() => onEdit(inv.id)}>Επεξεργασία</button><span className="sp" /><button className="btn d" onClick={() => { if (confirm("Διαγραφή αυτού του τιμολογίου;")) onDelete(inv.id); }}>Διαγραφή</button></div>
     </Modal>
   );
 }
@@ -1096,6 +1127,7 @@ function App() {
   const [supplierId, setSupplierId] = useState(null);
   const [invoiceId, setInvoiceId] = useState(null);
   const [productKeyOpen, setProductKeyOpen] = useState(null);
+  const [editId, setEditId] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
 
   async function reload() {
@@ -1115,10 +1147,12 @@ function App() {
   const vdata = useMemo(() => ({ ...data, alerts }), [data, alerts]);
   const unread = alerts.filter(a => !a.read).length;
 
-  function go(p) { setPage(p); setSupplierId(null); window.scrollTo(0, 0); }
+  function go(p) { setPage(p); setSupplierId(null); setEditId(null); window.scrollTo(0, 0); }
+  function startEdit(id) { setInvoiceId(null); setEditId(id); setPage("scan"); window.scrollTo(0, 0); }
+  function endEdit(id) { setEditId(null); setPage("invoices"); setInvoiceId(id); }
   function openSupplier(id) { setInvoiceId(null); setProductKeyOpen(null); setPage("suppliers"); setSupplierId(id); window.scrollTo(0, 0); }
 
-  async function saveDraft(draft, files) {
+  async function saveDraft(draft, files, existing) {
     const afm = draft.supplier.afm.replace(/\D/g, "");
     let sup = (afm && data.suppliers.find(s => s.afm === afm)) || (draft.supplier.name && data.suppliers.find(s => norm(s.name) === norm(draft.supplier.name))) || { id: uid(), createdAt: Date.now(), notes: "" };
     const pick = k => (draft.supplier[k] || "").trim() || sup[k] || "";
@@ -1137,13 +1171,13 @@ function App() {
     const vat = parseNum(draft.invoice.vat);
     const total = parseNum(draft.invoice.total) ?? (net != null && vat != null ? net + vat : net);
     const inv = {
-      id: uid(), supplierId: sup.id, number: draft.invoice.number.trim(), date: draft.invoice.date || todayISO(), type: draft.invoice.type.trim(), mark: draft.invoice.mark.trim(),
-      net, vat, total, paymentMethod: draft.invoice.paymentMethod.trim(), dueDate: draft.invoice.dueDate || "", lines, fileIds, notes: draft.notes || "", createdAt: Date.now(),
+      id: existing ? existing.id : uid(), supplierId: sup.id, number: draft.invoice.number.trim(), date: draft.invoice.date || todayISO(), type: draft.invoice.type.trim(), mark: draft.invoice.mark.trim(),
+      net, vat, total, paymentMethod: draft.invoice.paymentMethod.trim(), dueDate: draft.invoice.dueDate || "", lines, fileIds: existing ? existing.fileIds || [] : fileIds, notes: draft.notes || "", createdAt: existing ? existing.createdAt : Date.now(),
     };
     await dbPut("invoices", inv);
     if (newCats.length) await dbPut("meta", { ...settings, id: "settings", categories: [...knownCats, ...newCats] });
     await reload();
-    const newAlerts = buildAlerts(buildProducts([...data.invoices, inv], settings.productCats || {}), Number(settings.threshold) || 0).filter(a => a.invoiceId === inv.id);
+    const newAlerts = buildAlerts(buildProducts([...data.invoices.filter(i => i.id !== inv.id), inv], settings.productCats || {}), Number(settings.threshold) || 0).filter(a => a.invoiceId === inv.id);
     return { inv, alerts: newAlerts };
   }
 
@@ -1197,7 +1231,8 @@ function App() {
   const supplier = supplierId && supById[supplierId];
 
   let content;
-  if (page === "scan") content = <ScanPage data={vdata} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} />;
+  const editInv = editId && data.invoices.find(i => i.id === editId);
+  if (page === "scan") content = <ScanPage key={editId || "new"} editInv={editInv} onEditDone={endEdit} data={vdata} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} />;
   else if (page === "invoices") content = <InvoicesPage data={vdata} supById={supById} openInvoice={setInvoiceId} />;
   else if (page === "suppliers") content = supplier
     ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} />
@@ -1233,7 +1268,7 @@ function App() {
           </button>
         ))}
       </nav>
-      {openInv && <InvoiceModal inv={openInv} supplier={supById[openInv.supplierId]} onClose={() => setInvoiceId(null)} onDelete={deleteInvoice} openSupplier={openSupplier} />}
+      {openInv && <InvoiceModal inv={openInv} supplier={supById[openInv.supplierId]} onClose={() => setInvoiceId(null)} onDelete={deleteInvoice} openSupplier={openSupplier} onEdit={startEdit} />}
       {openProd && <ProductModal product={openProd} supplier={supById[openProd.supplierId]} onClose={() => setProductKeyOpen(null)} openInvoice={id => { setProductKeyOpen(null); setInvoiceId(id); }} setCategory={setCategory} categories={settings.categories || []} />}
       {toastMsg && <div className="toast">{toastMsg}</div>}
     </>

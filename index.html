@@ -3,125 +3,192 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#1C2230">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Τιμολόγια · beta</title>
+<title>Τιμολόγια | AR Akron</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
 <style>
+/* Κατάστιχο: χαρτί, μελάνι και ορείχαλκος μόνο εκεί που μετράει */
 :root{
-  --bg:#f6f7f9; --card:#fff; --text:#0f172a; --muted:#64748b; --faint:#94a3b8; --line:#e5e7eb; --line2:#f1f5f9;
-  --accent:#2563eb; --accent-d:#1d4ed8; --accent-soft:#eff6ff;
-  --up:#dc2626; --up-soft:#fef2f2; --down:#15803d; --down-soft:#f0fdf4; --warn:#b45309; --warn-soft:#fffbeb;
-  --radius:12px; --shadow:0 1px 2px rgba(15,23,42,.04),0 1px 3px rgba(15,23,42,.06);
+  --ink:#1C2230; --ink-2:#2B3345; --ink-3:#3A4356;
+  --paper:#F6F6F3; --card:#FFFFFF; --text:#1C2230; --muted:#5F6878; --faint:#8D95A3;
+  --line:#E4E2DC; --line2:#EFEEEA;
+  --brass:#B8862B; --brass-d:#97691A; --brass-soft:#F8F0DF;
+  --accent:#1C2230; --accent-d:#000; --accent-soft:#EEF0F4;
+  --up:#B42318; --up-soft:#FCEFEC; --down:#227A4B; --down-soft:#EAF5EE; --warn:#8A5A00; --warn-soft:#FFF5DC;
+  --r-lg:12px; --r:8px; --r-sm:6px;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
+html,body{margin:0;background:var(--paper);color:var(--text);font-family:Commissioner,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
 button,input,select{font:inherit;color:inherit}
-a{color:var(--accent)}
-.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
-.side{background:#fff;border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
-.brand{font-weight:700;font-size:17px;padding:4px 10px 18px;display:flex;align-items:center;gap:8px}
-.brand small{font-weight:600;font-size:11px;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:99px}
-.nav{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;border:0;background:none;cursor:pointer;color:#334155;font-weight:500;text-align:left;width:100%}
-.nav:hover{background:var(--line2)}
-.nav.on{background:var(--accent-soft);color:var(--accent-d)}
-.nav .cnt{margin-left:auto;background:var(--up);color:#fff;font-size:11px;font-weight:600;border-radius:99px;padding:1px 7px}
-.nav svg{width:18px;height:18px;flex:none}
-.scanbtn{margin:6px 0 14px;justify-content:center;background:var(--accent);color:#fff}
-.scanbtn:hover{background:var(--accent-d)}
-.main{padding:28px 32px 60px;max-width:1180px;width:100%}
+a{color:var(--ink);text-decoration-color:var(--brass);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Πλαϊνό μενού σε μελάνι */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;background:linear-gradient(90deg,var(--ink) 240px,transparent 240px)}
+.side{background:var(--ink);color:#C8CDD7;padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:2px}
+.brand{display:flex;flex-direction:column;padding:2px 12px 22px}
+.brand b{font-size:19px;font-weight:700;letter-spacing:-.01em;color:#fff}
+.brand span{font-size:12px;color:#8E96A6;margin-top:2px}
+.nav{position:relative;display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r);border:0;background:none;cursor:pointer;color:#C8CDD7;font-weight:500;text-align:left;width:100%}
+.nav:hover{background:rgba(255,255,255,.05);color:#fff}
+.nav.on{background:rgba(255,255,255,.08);color:#fff}
+.nav.on::before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--brass)}
+.nav .cnt{margin-left:auto;background:var(--brass);color:var(--ink);font-size:11px;font-weight:700;border-radius:99px;padding:1px 7px}
+.nav svg{width:18px;height:18px;flex:none;opacity:.9}
+.scanbtn{margin:0 0 16px;justify-content:center;background:var(--brass);color:var(--ink);font-weight:600;padding:11px 12px}
+.scanbtn:hover{background:#C9963A;color:var(--ink)}
+.side-foot{margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;color:#8E96A6}
+.side-foot b{display:block;color:#E3E6EC;font-weight:600}
+
+.main{padding:32px 40px 64px;max-width:1200px;width:100%;min-width:0}
 .mtop,.bnav{display:none}
-h1{font-size:22px;margin:0 0 4px;font-weight:700;letter-spacing:-.01em}
-h2{font-size:16px;margin:0 0 12px;font-weight:600}
-.sub{color:var(--muted);margin:0 0 20px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
-.grid{display:grid;gap:14px}
+.phead{display:flex;align-items:flex-end;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.phead .sp{flex:1}
+h1{font-size:26px;margin:0;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+h2{font-size:16px;margin:0 0 14px;font-weight:650;letter-spacing:-.005em}
+.sub{color:var(--muted);margin:4px 0 22px}
+.phead .sub{margin-bottom:0}
+
+/* Επιφάνειες: μία ακτίνα για περιέκτες, μικρότερη για πεδία */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px}
+.grid{display:grid;gap:16px}
 .g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
-.stat .l{color:var(--muted);font-size:13px} .stat .v{font-size:22px;font-weight:700;margin-top:4px;letter-spacing:-.01em} .stat .s{font-size:12px;color:var(--faint);margin-top:2px}
+.split{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+.stat .l{color:var(--muted);font-size:13px} .stat .v{font-size:24px;font-weight:700;margin-top:4px;letter-spacing:-.02em} .stat .s{font-size:12.5px;color:var(--faint);margin-top:2px}
+
+/* Λωρίδα βασικών αριθμών: ένα ενιαίο πλαίσιο με διαχωριστικά */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:16px}
+.kpis.k3{grid-template-columns:repeat(3,1fr)}
+.kpi{padding:16px 20px;border-left:1px solid var(--line2);min-width:0}
+.kpi:first-child{border-left:0}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi .v{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:2px;white-space:nowrap}
+.kpi .s{font-size:12.5px;color:var(--faint);margin-top:2px}
+.kpi.alert-k .v{color:var(--up)}
+
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .sp{flex:1}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 14px;cursor:pointer;font-weight:500;white-space:nowrap}
-.btn:hover{background:var(--line2)}
-.btn.p{background:var(--accent);border-color:var(--accent);color:#fff} .btn.p:hover{background:var(--accent-d)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:#fff;border-radius:var(--r);padding:8px 14px;cursor:pointer;font-weight:550;white-space:nowrap;color:var(--ink)}
+.btn:hover{border-color:#CFCCC4;background:#FBFBF9}
+.btn.p{background:var(--ink);border-color:var(--ink);color:#fff} .btn.p:hover{background:var(--ink-2)}
+.btn.g{background:var(--brass);border-color:var(--brass);color:var(--ink)} .btn.g:hover{background:#C9963A}
 .btn.d{color:var(--up)} .btn.sm{padding:5px 10px;font-size:13px}
-.btn:disabled{opacity:.5;cursor:default}
+.btn:disabled{opacity:.45;cursor:default}
 .btn svg{width:17px;height:17px}
+
+/* Πίνακες σαν λογιστική στήλη */
 table{width:100%;border-collapse:collapse}
-th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:10px;border-bottom:1px solid var(--line2);vertical-align:middle}
-tr.click{cursor:pointer} tr.click:hover td{background:#fafbfc}
+th{font-size:12.5px;font-weight:600;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 10px;border-bottom:1px solid var(--line2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer} tr.click:hover td{background:#FAFAF7}
 .r{text-align:right} .nw{white-space:nowrap}
-.tbl{overflow-x:auto;margin:0 -18px;padding:0 18px}
+.tbl{overflow-x:auto;margin:0 -20px;padding:0 20px}
 .mut{color:var(--muted)} .sm{font-size:13px}
-.empty{text-align:center;color:var(--muted);padding:36px 10px}
-.badge{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
-.b-up{background:var(--up-soft);color:var(--up)} .b-down{background:var(--down-soft);color:var(--down)} .b-eq{background:var(--line2);color:var(--muted)} .b-warn{background:var(--warn-soft);color:var(--warn)} .b-acc{background:var(--accent-soft);color:var(--accent-d)}
-input.in,select.in{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;width:100%;min-width:0}
-input.in:focus,select.in:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
-.field{display:flex;flex-direction:column;gap:4px;min-width:0}
-.field>span{font-size:12px;color:var(--muted);font-weight:500}
+.empty{text-align:center;color:var(--muted);padding:40px 12px}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:650;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.b-up{background:var(--up-soft);color:var(--up)} .b-down{background:var(--down-soft);color:var(--down)} .b-eq{background:var(--line2);color:var(--muted)} .b-warn{background:var(--warn-soft);color:var(--warn)} .b-acc{background:var(--accent-soft);color:var(--ink)}
+.totals td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
+.money{font-weight:650}
+
+input.in,select.in{border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;background:#fff;width:100%;min-width:0}
+input.in:focus,select.in:focus{outline:2px solid var(--brass-soft);border-color:var(--brass)}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>span{font-size:12.5px;color:var(--muted);font-weight:500}
 .field small{font-size:12px;color:var(--muted)} .field small.err{color:var(--up)}
-.field input.invalid{border-color:var(--up)}
-.fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.field input.invalid{border-color:var(--up);background:#FFFBFA}
+.fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .fgrid .wide{grid-column:span 2}
-.chips{display:flex;gap:6px;flex-wrap:wrap}
-.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer;font-weight:500}
-.chip.on{background:var(--text);border-color:var(--text);color:#fff}
-.drop{border:2px dashed #cbd5e1;border-radius:var(--radius);background:#fff;padding:34px 20px;text-align:center}
-.drop.over{border-color:var(--accent);background:var(--accent-soft)}
-.thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-.thumb{position:relative;width:96px;height:124px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
+
+/* Φίλτρα περιόδου σαν segmented control */
+.chips{display:inline-flex;gap:2px;flex-wrap:wrap;background:var(--line2);border-radius:var(--r);padding:3px}
+.chip{border:0;background:none;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;font-weight:550;color:var(--muted)}
+.chip:hover{color:var(--ink)}
+.chip.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(28,34,48,.12)}
+
+.drop{border:1.5px dashed #CFCCC4;border-radius:var(--r-lg);background:#fff;padding:44px 20px;text-align:center}
+.drop.over{border-color:var(--brass);background:var(--brass-soft)}
+.drop-t{font-size:17px;font-weight:650;margin-bottom:4px}
+.thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.thumb{position:relative;width:96px;height:124px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
 .thumb img{width:100%;height:100%;object-fit:cover}
-.thumb button{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:99px;border:0;background:rgba(15,23,42,.7);color:#fff;cursor:pointer;line-height:1}
+.thumb button{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:99px;border:0;background:rgba(28,34,48,.75);color:#fff;cursor:pointer;line-height:1}
 .review{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
 .preview{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;display:flex;flex-direction:column;gap:8px}
-.preview img{width:100%;border-radius:8px;border:1px solid var(--line)}
+.preview img{width:100%;border-radius:var(--r);border:1px solid var(--line)}
 .lines input.in{padding:6px 7px;font-size:14px}
 .lines td{padding:5px 4px;border-bottom:1px solid var(--line2)}
 .lines th{padding:6px 4px}
-.alert{border-radius:10px;padding:10px 14px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
-.alert.w{background:var(--warn-soft);color:#78350f} .alert.e{background:var(--up-soft);color:#7f1d1d} .alert.i{background:var(--accent-soft);color:#1e3a8a} .alert.ok{background:var(--down-soft);color:#14532d}
-.spin{width:38px;height:38px;border:3px solid var(--accent-soft);border-top-color:var(--accent);border-radius:99px;animation:sp 0.8s linear infinite;margin:0 auto 14px}
+.alert{border-radius:var(--r);padding:11px 14px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
+.alert.w{background:var(--warn-soft);color:#5C3D00} .alert.e{background:var(--up-soft);color:#7A1A10} .alert.i{background:var(--accent-soft);color:var(--ink)} .alert.ok{background:var(--down-soft);color:#14512F}
+.spin{width:38px;height:38px;border:3px solid var(--line2);border-top-color:var(--brass);border-radius:99px;animation:sp .8s linear infinite;margin:0 auto 14px}
 @keyframes sp{to{transform:rotate(360deg)}}
-.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow:auto}
-.modal{background:#fff;border-radius:14px;width:100%;max-width:820px;padding:22px;box-shadow:0 20px 50px rgba(15,23,42,.25)}
+.modal-bg{position:fixed;inset:0;background:rgba(28,34,48,.5);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow:auto}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:840px;padding:24px;box-shadow:0 24px 60px rgba(28,34,48,.28)}
 .modal.sm{max-width:520px}
-.mhead{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
-.x{border:0;background:var(--line2);width:32px;height:32px;border-radius:99px;cursor:pointer;font-size:18px;flex:none}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:11px 18px;border-radius:10px;font-weight:500;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.2);max-width:calc(100vw - 32px)}
+.mhead{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.x{border:0;background:var(--line2);width:34px;height:34px;border-radius:99px;cursor:pointer;font-size:18px;flex:none;color:var(--ink)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:var(--r);font-weight:550;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.2);max-width:calc(100vw - 32px)}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:14px} .kv dt{color:var(--muted)} .kv dd{margin:0}
 .sup-name{font-weight:600}
-.totals td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
-.imgs{display:flex;gap:10px;overflow-x:auto} .imgs img{height:220px;border-radius:8px;border:1px solid var(--line);cursor:zoom-in}
+.imgs{display:flex;gap:10px;overflow-x:auto} .imgs img{height:220px;border-radius:var(--r);border:1px solid var(--line);cursor:zoom-in}
 .mb{margin-bottom:16px} .mt{margin-top:16px}
+
+/* Ομάδες κατηγοριών */
 .grps{display:flex;flex-direction:column;gap:8px}
-.grp{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
-.grp>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;font-weight:600}
+.grp{border:1px solid var(--line);border-radius:var(--r);background:#fff;overflow:hidden}
+.grp>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none;font-weight:600}
 .grp>summary::-webkit-details-marker{display:none}
-.grp>summary:hover{background:#fafbfc}
-.grp .ge{font-size:18px;width:24px;text-align:center} .grp .gc{background:var(--line2);color:var(--muted);font-size:12px;border-radius:99px;padding:1px 8px;font-weight:600}
+.grp>summary:hover{background:#FAFAF7}
+.grp .gc{background:var(--line2);color:var(--muted);font-size:12px;border-radius:99px;padding:1px 8px;font-weight:600}
 .grp .chev{color:var(--faint);font-size:20px;transition:transform .15s;margin-left:4px} .grp[open] .chev{transform:rotate(90deg)}
 .grp[open]>summary{border-bottom:1px solid var(--line)}
-.gbody{padding:0 14px 6px} .gbody .tbl{margin:0 -14px;padding:0 14px}
-@media (max-width:1000px){ .g4{grid-template-columns:repeat(2,1fr)} .fgrid{grid-template-columns:repeat(2,1fr)} .review{grid-template-columns:1fr} .preview{position:static;max-height:none;flex-direction:row;overflow-x:auto} .preview img{width:auto;height:240px} }
+.gbody{padding:0 16px 6px} .gbody .tbl{margin:0 -16px;padding:0 16px}
+
+/* Αρχική: «Τι ακρίβυνε» */
+.rise{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 18px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line2);cursor:pointer}
+.rise:last-child{border-bottom:0}
+.rise:hover .rn{text-decoration:underline;text-decoration-color:var(--brass);text-underline-offset:3px}
+.rise .rn{font-weight:600}
+.rise .rs{font-size:13px;color:var(--muted)}
+.rise .rp{font-size:13.5px;color:var(--muted);text-align:right;white-space:nowrap}
+.rise .rp b{color:var(--text)}
+.rise .rd{font-size:18px;font-weight:700;color:var(--up);text-align:right;min-width:78px}
+.rise .rd small{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+.bars{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:22px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.bar i{display:block;width:100%;max-width:38px;background:#7C879C;border-radius:4px 4px 0 0;min-height:2px}
+.bar.cur i{background:var(--brass)}
+.bar em{font-style:normal;font-size:11.5px;font-weight:650;margin-bottom:4px;white-space:nowrap}
+.bar span{font-size:12px;color:var(--muted);margin-top:6px}
+.share{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:9px 0;cursor:pointer}
+.share .bg{grid-column:1/-1;height:4px;background:var(--line2);border-radius:4px;overflow:hidden}
+.share .bg i{display:block;height:100%;background:var(--ink-3);border-radius:4px}
+
+@media (max-width:1050px){ .g4,.kpis{grid-template-columns:repeat(2,1fr)} .kpi:nth-child(3){border-left:0} .kpi:nth-child(n+3){border-top:1px solid var(--line2)} .fgrid{grid-template-columns:repeat(2,1fr)} .review,.split{grid-template-columns:1fr} .preview{position:static;max-height:none;flex-direction:row;overflow-x:auto} .preview img{width:auto;height:240px} }
 @media (max-width:860px){
-  .app{grid-template-columns:1fr} .side{display:none}
-  .main{padding:16px 16px 100px}
-  .mtop{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
-  .mtop .brand{padding:0}
-  .icbtn{position:relative;border:0;background:var(--line2);width:38px;height:38px;border-radius:99px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-  .icbtn svg{width:19px;height:19px} .icbtn .dot{position:absolute;top:6px;right:7px;width:9px;height:9px;background:var(--up);border-radius:99px;border:2px solid #fff}
+  .app{grid-template-columns:1fr;background:none} .side{display:none}
+  .main{padding:18px 16px 104px}
+  .mtop{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--ink);color:#fff;position:sticky;top:0;z-index:20}
+  .mtop .brand{padding:0;flex-direction:row;align-items:baseline;gap:8px}
+  .icbtn{position:relative;border:0;background:rgba(255,255,255,.08);color:#fff;width:38px;height:38px;border-radius:99px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .icbtn svg{width:19px;height:19px} .icbtn .dot{position:absolute;top:6px;right:7px;width:9px;height:9px;background:var(--brass);border-radius:99px;border:2px solid var(--ink)}
   .bnav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20}
-  .bnav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer;padding:4px 0;font-weight:500}
-  .bnav button.on{color:var(--accent)} .bnav svg{width:22px;height:22px}
-  .bnav .big span.c{background:var(--accent);color:#fff;width:46px;height:46px;border-radius:99px;display:flex;align-items:center;justify-content:center;margin-top:-20px;box-shadow:0 6px 16px rgba(37,99,235,.35)}
+  .bnav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer;padding:4px 0;font-weight:550}
+  .bnav button.on{color:var(--ink)} .bnav svg{width:22px;height:22px}
+  .bnav .big span.c{background:var(--brass);color:var(--ink);width:50px;height:50px;border-radius:99px;display:flex;align-items:center;justify-content:center;margin-top:-22px;box-shadow:0 6px 16px rgba(184,134,43,.4);border:3px solid #fff}
   .g3,.g2{grid-template-columns:1fr} .fgrid .wide{grid-column:span 2}
-  h1{font-size:20px}
+  h1{font-size:22px}
+  .kpi{padding:13px 14px} .kpi .v{font-size:21px}
   .hide-m{display:none}
+  .phead .btn.g{display:none}
 }
 </style>
 </head>
@@ -342,12 +409,12 @@ function Sparkline({ points, w = 560, h = 140 }) {
   const d = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.price).toFixed(1)}`).join(" ");
   return (
     <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: "auto", display: "block" }}>
-      <line x1={pad} x2={w - pad} y1={y(min)} y2={y(min)} stroke="#e5e7eb" />
+      <line x1={pad} x2={w - pad} y1={y(min)} y2={y(min)} stroke="#EFEEEA" />
       <line x1={pad} x2={w - pad} y1={y(max)} y2={y(max)} stroke="#e5e7eb" />
-      <path d={d} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinejoin="round" />
-      {points.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.price)} r="3.5" fill="#fff" stroke="#2563eb" strokeWidth="2"><title>{fmtDate(p.date)}: {fmtPrice(p.price)}</title></circle>)}
-      <text x={w - pad} y={y(max) - 5} textAnchor="end" fontSize="11" fill="#64748b">{fmtPrice(max)}</text>
-      <text x={w - pad} y={y(min) + 13} textAnchor="end" fontSize="11" fill="#64748b">{fmtPrice(min)}</text>
+      <path d={d} fill="none" stroke="#1C2230" strokeWidth="2" strokeLinejoin="round" />
+      {points.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.price)} r="4" fill="#fff" stroke="#B8862B" strokeWidth="2"><title>{fmtDate(p.date)}: {fmtPrice(p.price)}</title></circle>)}
+      <text x={w - pad} y={y(max) - 5} textAnchor="end" fontSize="11" fill="#5F6878">{fmtPrice(max)}</text>
+      <text x={w - pad} y={y(min) + 13} textAnchor="end" fontSize="11" fill="#5F6878">{fmtPrice(min)}</text>
     </svg>
   );
 }
@@ -532,7 +599,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
       const ct = res.headers.get("content-type") || "";
       if (!ct.includes("application/json")) throw new Error("Η ανάγνωση δουλεύει μόνο όταν η εφαρμογή τρέχει στο Netlify (ή με netlify dev).");
       const j = await res.json();
-      if (!res.ok || j.error) throw new Error((j.error || "Σφάλμα ανάγνωσης") + (j.tried && j.tried.length ? ` [${j.tried.join(" · ")}]` : ""));
+      if (!res.ok || j.error) throw new Error((j.error || "Σφάλμα ανάγνωσης") + (j.tried && j.tried.length ? ` [${j.tried.join(", ")}]` : ""));
       setDraft(resultToDraft(j.result)); setReadMeta({ model: j.model, seconds: j.seconds }); setPhase("review");
     } catch (e) { setError(e.message || String(e)); setPhase("pick"); }
   }
@@ -592,16 +659,18 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
   return (
     <>
       <h1>Νέο τιμολόγιο</h1>
-      <p className="sub">Φωτογράφισε το τιμολόγιο ή ανέβασε PDF. Για πολυσέλιδο, πρόσθεσε όλες τις σελίδες.</p>
+      <p className="sub">Η εφαρμογή διαβάζει προμηθευτή, είδη και τιμές. Πριν την αποθήκευση τα ελέγχεις.</p>
       {error && <div className="alert e mb">{error}</div>}
       <div className={"drop" + (over ? " over" : "")}
         onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
         onDrop={e => { e.preventDefault(); setOver(false); addFiles([...e.dataTransfer.files]); }}>
+        <div className="drop-t">Φωτογράφισε ή ανέβασε το τιμολόγιο</div>
+        <div className="mut sm" style={{ marginBottom: 18 }}>JPG, PNG ή PDF</div>
         <div className="row" style={{ justifyContent: "center" }}>
-          <button className="btn p" onClick={() => camRef.current.click()}><Icon n="cam" /> Φωτογραφία</button>
+          <button className="btn g" onClick={() => camRef.current.click()}><Icon n="cam" /> Φωτογραφία</button>
           <button className="btn" onClick={() => fileRef.current.click()}><Icon n="file" /> Αρχείο / PDF</button>
         </div>
-        <div className="mut sm" style={{ marginTop: 10 }}>ή σύρε αρχεία εδώ · έως 6 σελίδες</div>
+        <div className="mut sm" style={{ marginTop: 12 }}>ή σύρε τα αρχεία εδώ. Για πολυσέλιδο τιμολόγιο πρόσθεσε έως 6 σελίδες.</div>
         <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={e => { addFiles([...e.target.files]); e.target.value = ""; }} />
         <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple hidden onChange={e => { addFiles([...e.target.files]); e.target.value = ""; }} />
         {files.length > 0 && (
@@ -618,7 +687,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
       <div className="row mt">
         <button className="btn" onClick={() => { setDraft(emptyDraft()); setPhase("review"); }}>Χειροκίνητη καταχώρηση</button>
         <span className="sp" />
-        <button className="btn p" disabled={!files.length} onClick={read}>Ανάγνωση τιμολογίου →</button>
+        <button className="btn p" disabled={!files.length} onClick={read}>Ανάγνωση τιμολογίου</button>
       </div>
     </>
   );
@@ -641,7 +710,7 @@ function InvoiceModal({ inv, supplier, onClose, onDelete, openSupplier, onEdit }
     <Modal onClose={onClose}>
       <div className="mhead">
         <div><h1 style={{ marginBottom: 2 }}>{inv.type || "Τιμολόγιο"} {inv.number}</h1>
-          <div className="mut"><a href="#" onClick={e => { e.preventDefault(); openSupplier(supplier.id); }}>{supplier?.name}</a> · {fmtDate(inv.date)}{inv.mark ? " · ΜΑΡΚ " + inv.mark : ""}</div></div>
+          <div className="mut"><a href="#" onClick={e => { e.preventDefault(); openSupplier(supplier.id); }}>{supplier?.name}</a>, {fmtDate(inv.date)}{inv.mark ? <span className="sm">, ΜΑΡΚ {inv.mark}</span> : ""}</div></div>
         <span className="sp" /><button className="x" onClick={onClose}>×</button>
       </div>
       {urls.length > 0 && <div className="imgs mb">{urls.map((u, i) => u.pdf ? <a key={i} className="btn" href={u.url} target="_blank" rel="noreferrer">Άνοιγμα PDF</a> : <a key={i} href={u.url} target="_blank" rel="noreferrer"><img src={u.url} alt="" /></a>)}</div>}
@@ -748,7 +817,7 @@ function ProductsTable({ products, supById, onOpen, showSupplier }) {
       <thead><tr><th>Είδος</th>{showSupplier && <th>Προμηθευτής</th>}<th className="r">Τελευταία τιμή</th><th className="r hide-m">Προηγούμενη</th><th className="r">Μεταβολή</th><th className="r hide-m">Τελ. αγορά</th></tr></thead>
       <tbody>{products.map(p => (
         <tr key={p.key} className="click" onClick={() => onOpen(p.key)}>
-          <td>{p.description}<div className="mut sm">{p.code ? "Κωδ. " + p.code : ""}{p.unit ? (p.code ? " · " : "") + p.unit : ""}</div></td>
+          <td>{p.description}<div className="mut sm">{[p.code && "Κωδ. " + p.code, p.unit].filter(Boolean).join(", ")}</div></td>
           {showSupplier && <td className="sm">{supById[p.supplierId]?.name}</td>}
           <td className="r nw"><b>{fmtPrice(p.last.price)}</b></td>
           <td className="r nw mut hide-m">{p.prev ? fmtPrice(p.prev.price) : "—"}</td>
@@ -772,14 +841,14 @@ function SupplierDetail({ supplier, data, products, supById, openInvoice, openPr
     <>
       <button className="btn sm mb" onClick={onBack}><Icon n="back" /> Προμηθευτές</button>
       <div className="row mb" style={{ alignItems: "flex-start" }}>
-        <div><h1>{supplier.name}</h1><div className="mut">{supplier.afm ? "ΑΦΜ " + supplier.afm : "Χωρίς ΑΦΜ"}{supplier.doy ? " · ΔΟΥ " + supplier.doy : ""}</div></div>
+        <div><h1>{supplier.name}</h1><div className="mut">{supplier.afm ? "ΑΦΜ " + supplier.afm : "Χωρίς ΑΦΜ"}{supplier.doy ? ", ΔΟΥ " + supplier.doy : ""}</div></div>
         <span className="sp" /><button className="btn" onClick={() => setEdit(true)}>Επεξεργασία</button>
       </div>
-      <div className="grid g4 mb">
-        <div className="card stat"><div className="l">Αγορές περιόδου</div><div className="v">{fmtEur(sum(list, i => i.total))}</div><div className="s">{list.length} τιμολόγια</div></div>
-        <div className="card stat"><div className="l">Αγορές από την αρχή</div><div className="v">{fmtEur(sum(all, i => i.total))}</div><div className="s">{all.length} τιμολόγια</div></div>
-        <div className="card stat"><div className="l">Είδη</div><div className="v">{prods.length}</div><div className="s">{rising} με αύξηση στην τελευταία αγορά</div></div>
-        <div className="card stat"><div className="l">Επικοινωνία</div><div className="sm" style={{ marginTop: 6 }}>{supplier.phone || "—"}<br />{supplier.email ? <a href={"mailto:" + supplier.email}>{supplier.email}</a> : ""}</div><div className="s">{supplier.address}</div></div>
+      <div className="kpis">
+        <div className="kpi"><div className="l">Αγορές περιόδου</div><div className="v">{fmtEur(sum(list, i => i.total))}</div><div className="s">{list.length} τιμολόγια</div></div>
+        <div className="kpi"><div className="l">Αγορές από την αρχή</div><div className="v">{fmtEur(sum(all, i => i.total))}</div><div className="s">{all.length} τιμολόγια</div></div>
+        <div className={"kpi" + (rising ? " alert-k" : "")}><div className="l">Είδη σε αύξηση</div><div className="v">{rising}</div><div className="s">από {prods.length} είδη</div></div>
+        <div className="kpi"><div className="l">Επικοινωνία</div><div style={{ marginTop: 6, fontWeight: 600 }}>{supplier.phone ? <a href={"tel:" + supplier.phone}>{supplier.phone}</a> : "Χωρίς τηλέφωνο"}</div><div className="s" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{supplier.email ? <a href={"mailto:" + supplier.email}>{supplier.email}</a> : supplier.address}</div></div>
       </div>
       {supplier.notes && <div className="alert i mb">{supplier.notes}</div>}
       <div className="card grid mb">
@@ -881,7 +950,7 @@ function ProductModal({ product, supplier, onClose, openInvoice, setCategory, ca
   return (
     <Modal onClose={onClose}>
       <div className="mhead">
-        <div><h1 style={{ marginBottom: 2 }}>{product.description}</h1><div className="mut">{supplier?.name}{product.code ? " · Κωδ. " + product.code : ""}{product.unit ? " · " + product.unit : ""}</div></div>
+        <div><h1 style={{ marginBottom: 2 }}>{product.description}</h1><div className="mut">{[supplier?.name, product.code && "Κωδ. " + product.code, product.unit].filter(Boolean).join(", ")}</div></div>
         <span className="sp" /><button className="x" onClick={onClose}>×</button>
       </div>
       <div className="row mb"><span className="mut sm">Κατηγορία</span><CatSelect value={product.category} categories={categories} onChange={v => setCategory(product.key, v)} /></div>
@@ -981,10 +1050,10 @@ function AlertsPage({ data, supById, openProduct, markAllRead, settings }) {
         <span className="sp" />{unread > 0 && <button className="btn" onClick={markAllRead}>Σήμανση όλων ως αναγνωσμένες</button>}
       </div>
       {all.length > 0 && (
-        <div className="grid g3 mb">
-          <div className="card stat"><div className="l">Αυξήσεις</div><div className="v" style={{ color: "var(--up)" }}>{all.filter(a => a.pct > 0).length}</div></div>
-          <div className="card stat"><div className="l">Μειώσεις</div><div className="v" style={{ color: "var(--down)" }}>{all.filter(a => a.pct < 0).length}</div></div>
-          <div className="card stat"><div className="l">Επιπλέον κόστος από αυξήσεις*</div><div className="v">{fmtEur(impact)}</div></div>
+        <div className="kpis k3">
+          <div className="kpi alert-k"><div className="l">Αυξήσεις</div><div className="v">{all.filter(a => a.pct > 0).length}</div></div>
+          <div className="kpi"><div className="l">Μειώσεις</div><div className="v" style={{ color: "var(--down)" }}>{all.filter(a => a.pct < 0).length}</div></div>
+          <div className="kpi"><div className="l">Επιπλέον κόστος από αυξήσεις*</div><div className="v">{fmtEur(impact)}</div></div>
         </div>
       )}
       <div className="card grid">
@@ -1001,46 +1070,99 @@ function AlertsPage({ data, supById, openProduct, markAllRead, settings }) {
 /* =========================================================
    Αρχική
    ========================================================= */
-function Dashboard({ data, supById, products, go, openSupplier, openProduct }) {
+function Dashboard({ data, supById, products, go, openSupplier, openProduct, openInvoice, settings }) {
+  const now = new Date();
   const m = periodRange({ preset: "month" }), pm = periodRange({ preset: "prev" });
   const thisM = data.invoices.filter(i => inRange(i.date, m)), prevM = data.invoices.filter(i => inRange(i.date, pm));
   const tot = sum(thisM, i => i.total), ptot = sum(prevM, i => i.total);
-  const bySup = {}; thisM.forEach(i => bySup[i.supplierId] = (bySup[i.supplierId] || 0) + i.total);
+  const vsPrev = ptot ? (tot - ptot) / ptot * 100 : null;
+  const bySup = {}; thisM.forEach(i => bySup[i.supplierId] = (bySup[i.supplierId] || 0) + (i.total || 0));
   const top = Object.entries(bySup).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const unread = data.alerts.filter(a => !a.read);
-  const recentUp = [...data.alerts].filter(a => a.pct > 0).sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
-  const monthName = new Date().toLocaleDateString("el-GR", { month: "long" });
+  const ups = data.alerts.filter(a => a.pct > 0);
+  const upsM = ups.filter(a => inRange(a.newDate, m));
+  const extra = sum(upsM.filter(a => a.qty), a => (a.newPrice - a.oldPrice) * a.qty);
+  // «Τι ακρίβυνε»: οι πιο πρόσφατες αυξήσεις, με τη μεγαλύτερη επίπτωση πρώτα
+  const rises = [...ups].sort((a, b) => b.newDate.localeCompare(a.newDate) || ((b.newPrice - b.oldPrice) * (b.qty || 1)) - ((a.newPrice - a.oldPrice) * (a.qty || 1))).slice(0, 6);
+  // Αγορές ανά μήνα (6 μήνες)
+  const months = [...Array(6)].map((_, k) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + k, 1);
+    const r = { from: toISO(d), to: toISO(new Date(d.getFullYear(), d.getMonth() + 1, 0)) };
+    return { label: d.toLocaleDateString("el-GR", { month: "short" }).replace(".", ""), long: d.toLocaleDateString("el-GR", { month: "long", year: "numeric" }), v: sum(data.invoices.filter(i => inRange(i.date, r)), i => i.total), cur: k === 5 };
+  });
+  const maxM = Math.max(...months.map(x => x.v), 1);
+  const recent = [...data.invoices].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt).slice(0, 5);
+  const monthName = now.toLocaleDateString("el-GR", { month: "long" });
+  const unread = data.alerts.filter(a => !a.read).length;
 
   if (!data.invoices.length) return (
-    <div className="card" style={{ textAlign: "center", padding: "56px 24px" }}>
-      <h1>Καλώς ήρθες 👋</h1>
-      <p className="sub" style={{ maxWidth: 460, margin: "8px auto 22px" }}>Φωτογράφισε το πρώτο τιμολόγιο. Η εφαρμογή θα διαβάσει προμηθευτή, είδη και τιμές, και θα σε ειδοποιεί όταν κάτι ακριβαίνει.</p>
-      <button className="btn p" onClick={() => go("scan")}><Icon n="cam" /> Σάρωση πρώτου τιμολογίου</button>
+    <div className="card" style={{ padding: "56px 28px", maxWidth: 640 }}>
+      <h1>Ξεκίνα με το πρώτο τιμολόγιο</h1>
+      <p className="sub" style={{ maxWidth: 480, margin: "10px 0 24px" }}>Φωτογράφισέ το ή ανέβασε το PDF. Η εφαρμογή διαβάζει προμηθευτή, είδη και τιμές, φτιάχνει την καρτέλα του προμηθευτή και σε ειδοποιεί όταν κάτι ακριβαίνει.</p>
+      <button className="btn g" onClick={() => go("scan")}><Icon n="cam" /> Σάρωση τιμολογίου</button>
     </div>
   );
 
   return (
     <>
-      <h1>Επισκόπηση</h1><p className="sub">Οι αγορές σου με μια ματιά.</p>
-      <div className="grid g4 mb">
-        <div className="card stat"><div className="l">Αγορές {monthName}</div><div className="v">{fmtEur(tot)}</div><div className="s">{thisM.length} τιμολόγια</div></div>
-        <div className="card stat"><div className="l">Προηγούμενος μήνας</div><div className="v">{fmtEur(ptot)}</div><div className="s">{prevM.length} τιμολόγια</div></div>
-        <div className="card stat"><div className="l">Προμηθευτές</div><div className="v">{data.suppliers.length}</div><div className="s">{products.length} είδη σε παρακολούθηση</div></div>
-        <div className="card stat" style={unread.length ? { borderColor: "#fcd34d" } : {}}><div className="l">Νέες ειδοποιήσεις</div><div className="v">{unread.length}</div><div className="s"><a href="#" onClick={e => { e.preventDefault(); go("alerts"); }}>Προβολή</a></div></div>
+      <div className="phead">
+        <div><h1>{settings.businessName || "Επισκόπηση"}</h1><p className="sub">Αγορές και τιμές, {now.toLocaleDateString("el-GR", { month: "long", year: "numeric" })}</p></div>
+        <span className="sp" />
+        <button className="btn g" onClick={() => go("scan")}><Icon n="cam" /> Νέο τιμολόγιο</button>
       </div>
-      <div className="grid g2">
+
+      <div className="kpis">
+        <div className="kpi"><div className="l">Αγορές {monthName}</div><div className="v">{fmtEur(tot)}</div>
+          <div className="s">{vsPrev == null ? `${thisM.length} τιμολόγια` : <>{vsPrev >= 0 ? "+" : "−"}{Math.abs(vsPrev).toLocaleString("el-GR", { maximumFractionDigits: 0 })}% από τον προηγούμενο μήνα</>}</div></div>
+        <div className="kpi"><div className="l">Τιμολόγια μήνα</div><div className="v">{thisM.length}</div><div className="s">από {Object.keys(bySup).length} προμηθευτές</div></div>
+        <div className={"kpi" + (upsM.length ? " alert-k" : "")}><div className="l">Αυξήσεις τιμών μήνα</div><div className="v">{upsM.length}</div><div className="s">{upsM.length ? (upsM.filter(a => !a.read).length ? `${upsM.filter(a => !a.read).length} δεν τις έχεις δει` : "τις έχεις δει όλες") : "καμία αυτόν τον μήνα"}</div></div>
+        <div className={"kpi" + (extra > 0 ? " alert-k" : "")}><div className="l">Επιπλέον κόστος μήνα</div><div className="v">{fmtEur(extra)}</div><div className="s">λόγω αυξήσεων</div></div>
+      </div>
+
+      <div className="split mb">
         <div className="card">
-          <h2>Μεγαλύτεροι προμηθευτές ({monthName})</h2>
-          {!top.length ? <div className="empty">Κανένα τιμολόγιο αυτόν τον μήνα.</div> : <table><tbody>{top.map(([id, v]) => (
-            <tr key={id} className="click" onClick={() => openSupplier(id)}><td className="sup-name">{supById[id]?.name}</td><td className="r nw"><b>{fmtEur(v)}</b><div className="mut sm">{tot ? Math.round(v / tot * 100) : 0}%</div></td></tr>
-          ))}</tbody></table>}
+          <div className="row" style={{ marginBottom: 4 }}><h2 style={{ margin: 0 }}>Τι ακρίβυνε</h2><span className="sp" />{ups.length > 0 && <button className="btn sm" onClick={() => go("alerts")}>Όλες οι αυξήσεις</button>}</div>
+          {!rises.length ? <div className="empty">Καμία αύξηση τιμής ακόμα. Θα εμφανιστούν εδώ όταν ένα είδος έρθει ακριβότερα από την προηγούμενη φορά.</div> :
+            rises.map(a => (
+              <div key={a.id} className="rise" onClick={() => openProduct(a.productKey)}>
+                <div style={{ minWidth: 0 }}><div className="rn">{a.description}</div><div className="rs">{supById[a.supplierId]?.name}, {fmtDate(a.newDate)}</div></div>
+                <div className="rp hide-m">{fmtPrice(a.oldPrice)} → <b>{fmtPrice(a.newPrice)}</b></div>
+                <div className="rd">+{a.pct.toLocaleString("el-GR", { maximumFractionDigits: 1 })}%{a.qty ? <small>+{fmtEur((a.newPrice - a.oldPrice) * a.qty)}</small> : null}</div>
+              </div>
+            ))}
         </div>
-        <div className="card">
-          <h2>Πρόσφατες αυξήσεις</h2>
-          {!recentUp.length ? <div className="empty">Καμία αύξηση τιμής μέχρι τώρα.</div> : <table><tbody>{recentUp.map(a => (
-            <tr key={a.id} className="click" onClick={() => openProduct(a.productKey)}><td>{a.description}<div className="mut sm">{supById[a.supplierId]?.name}</div></td><td className="r nw sm">{fmtPrice(a.newPrice)}</td><td className="r"><ChangeBadge pct={a.pct} /></td></tr>
-          ))}</tbody></table>}
+        <div className="grid">
+          <div className="card">
+            <h2>Αγορές ανά μήνα</h2>
+            <div className="bars" role="img" aria-label={months.map(x => `${x.long}: ${fmtEur(x.v)}`).join(", ")}>
+              {months.map(x => (
+                <div key={x.long} className={"bar" + (x.cur ? " cur" : "")} title={`${x.long}: ${fmtEur(x.v)}`}>
+                  {x.cur && <em>{fmtEur(x.v)}</em>}
+                  <i style={{ height: `${Math.max(x.v / maxM * 100, 1.5)}%` }} />
+                  <span>{x.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="card">
+            <h2>Μεγαλύτεροι προμηθευτές, {monthName}</h2>
+            {!top.length ? <div className="mut sm">Κανένα τιμολόγιο αυτόν τον μήνα.</div> : top.map(([id, v]) => (
+              <div key={id} className="share" onClick={() => openSupplier(id)}>
+                <span className="sup-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{supById[id]?.name}</span>
+                <span className="money">{fmtEur(v)}</span>
+                <span className="bg"><i style={{ width: `${tot ? v / tot * 100 : 0}%` }} /></span>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="row" style={{ marginBottom: 6 }}><h2 style={{ margin: 0 }}>Τελευταία τιμολόγια</h2><span className="sp" /><button className="btn sm" onClick={() => go("invoices")}>Όλα τα τιμολόγια</button></div>
+        <div className="tbl"><table><tbody>{recent.map(i => (
+          <tr key={i.id} className="click" onClick={() => openInvoice(i.id)}>
+            <td><div className="sup-name">{supById[i.supplierId]?.name}</div><div className="mut sm">{fmtDate(i.date)}{i.number ? `, αρ. ${i.number}` : ""}</div></td><td className="r nw money">{fmtEur(i.total)}</td>
+          </tr>
+        ))}</tbody></table></div>
       </div>
     </>
   );
@@ -1108,7 +1230,7 @@ function SettingsPage({ settings, saveSettings, data, reload, toast, products, r
           <button className="btn d" onClick={wipe}>Διαγραφή όλων</button>
         </div>
       </div>
-      <div className="mut sm">{data.invoices.length} τιμολόγια · {data.suppliers.length} προμηθευτές · {data.alerts.length} ειδοποιήσεις</div>
+      <div className="mut sm">Αποθηκευμένα: {data.invoices.length} τιμολόγια, {data.suppliers.length} προμηθευτές, {data.alerts.length} αλλαγές τιμών</div>
     </>
   );
 }
@@ -1240,24 +1362,23 @@ function App() {
   else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} autoClassify={autoClassify} />;
   else if (page === "alerts") content = <AlertsPage data={vdata} supById={supById} settings={settings} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
   else if (page === "settings") content = <SettingsPage products={products} renameCategory={renameCategory} settings={settings} saveSettings={saveSettings} data={vdata} reload={reload} toast={setToastMsg} />;
-  else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} />;
+  else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} openInvoice={setInvoiceId} settings={settings} />;
 
   return (
     <>
       <div className="mtop">
-        <div className="brand">Τιμολόγια <small>beta</small></div><span className="sp" />
+        <div className="brand"><b>Τιμολόγια</b><span>AR Akron</span></div><span className="sp" />
         <button className="icbtn" onClick={() => go("alerts")} aria-label="Ειδοποιήσεις"><Icon n="bell" />{unread > 0 && <span className="dot" />}</button>
         <button className="icbtn" onClick={() => go("settings")} aria-label="Ρυθμίσεις"><Icon n="gear" /></button>
       </div>
       <div className="app">
         <aside className="side">
-          <div className="brand">Τιμολόγια <small>beta</small></div>
+          <div className="brand"><b>Τιμολόγια</b><span>από την AR Akron Services</span></div>
           <button className="nav scanbtn" onClick={() => go("scan")}><Icon n="cam" /> Νέο τιμολόγιο</button>
           {NAV.map(([k, l, ic]) => (
             <button key={k} className={"nav" + (page === k ? " on" : "")} onClick={() => go(k)}><Icon n={ic} /> {l}{k === "alerts" && unread > 0 && <span className="cnt">{unread}</span>}</button>
           ))}
-          <span className="sp" />
-          {settings.businessName && <div className="mut sm" style={{ padding: "0 10px" }}>{settings.businessName}</div>}
+          <div className="side-foot">{settings.businessName ? <><b>{settings.businessName}</b>{settings.businessType || "Η επιχείρησή μου"}</> : <a href="#" style={{ color: "#C8CDD7" }} onClick={e => { e.preventDefault(); go("settings"); }}>Συμπλήρωσε τα στοιχεία της επιχείρησης</a>}</div>
         </aside>
         <main className="main">{content}</main>
       </div>

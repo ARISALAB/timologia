@@ -71,17 +71,13 @@ ${ownAfm ? `- Ο αγοραστής έχει ΑΦΜ ${ownAfm}. Αυτό το Α�
 - Αν οι εικόνες είναι πολλές σελίδες του ίδιου παραστατικού, συνδύασέ τες σε ένα αποτέλεσμα.`;
 }
 
-const DEFAULT_MODELS = "gemini-3.8-flash,gemini-3.5-flash,gemini-3.5-flash-lite";
+const DEFAULT_MODELS = "gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.5-flash";
 
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
-const json = (obj, status = 200) =>
-  new Response(JSON.stringify(obj), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
-  });
+const json = (obj) => obj; // το αποτέλεσμα γράφεται στο stream (βλ. κάτω)
 
-export default async (request) => {
+async function work(request) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const key = Netlify.env.get("GEMINI_API_KEY");
@@ -117,8 +113,8 @@ export default async (request) => {
   let lastStatus = 0, lastMsg = "";
 
   for (const model of models) {
-    const left = 36000 - (Date.now() - started); // το Netlify κόβει στα ~40″
-    if (left < 6000) { tried.push(`${model}: δεν έμεινε χρόνος`); break; }
+    const left = 110000 - (Date.now() - started); // συνολικό όριο 110″
+    if (left < 10000) { tried.push(`${model}: δεν έμεινε χρόνος`); break; }
 
     let thinking = true;
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -133,7 +129,7 @@ export default async (request) => {
       const t0 = Date.now();
       try {
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), Math.min(left - 1000, 30000));
+        const timer = setTimeout(() => ctrl.abort(), Math.min(left - 1000, 60000));
         res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
           {
@@ -179,6 +175,28 @@ export default async (request) => {
   if (lastStatus === 429) return json({ error: "Έφτασες το όριο του δωρεάν Gemini. Δοκίμασε ξανά σε ένα λεπτό.", tried }, 429);
   if (lastStatus === 503 || lastStatus === 500) return json({ error: "Το Gemini είναι προσωρινά υπερφορτωμένο. Δοκίμασε ξανά σε λίγο.", tried }, 503);
   return json({ error: lastMsg || "Αποτυχία ανάγνωσης.", tried }, 502);
+}
+
+// Το Netlify κόβει μια απάντηση που δεν έχει ξεκινήσει μέσα σε ~40″.
+// Γι' αυτό ξεκινάμε αμέσως την απάντηση και στέλνουμε ένα κενό κάθε 5″ όσο σκέφτεται το Gemini.
+// Τα κενά πριν από το JSON αγνοούνται από το res.json() του browser.
+export default async (request) => {
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      controller.enqueue(enc.encode(" ")); // αμέσως: η απάντηση έχει ξεκινήσει
+      const ping = setInterval(() => { try { controller.enqueue(enc.encode(" ")); } catch {} }, 5000);
+      let out;
+      try { out = await work(request); }
+      catch (e) { out = { error: "Απρόσμενο σφάλμα: " + (e?.message || e) }; }
+      clearInterval(ping);
+      controller.enqueue(enc.encode(JSON.stringify(out)));
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+  });
 };
 
 export const config = { path: "/api/extract" };

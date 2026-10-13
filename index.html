@@ -191,7 +191,7 @@ function validAfm(a) {
   let s = 0; for (let i = 0; i < 8; i++) s += Number(a[i]) * 2 ** (8 - i);
   return (s % 11) % 10 === Number(a[8]);
 }
-function effPrice(l) { if (l.unitPrice > 0) return l.unitPrice * (1 - (l.discountPct || 0) / 100); if (l.net > 0) return l.net / (l.quantity > 0 ? l.quantity : 1); return null; }
+function effPrice(l) { if (l.net > 0) return l.net / (l.quantity > 0 ? l.quantity : 1); if (l.unitPrice > 0) return l.unitPrice * (1 - (l.discountPct || 0) / 100); return null; }
 // Κλειδί σύγκρισης: αγνοεί τόνους, κεφαλαία, τελείες και σύμβολα ("Φέτα Π.Ο.Π." = "ΦΕΤΑ ΠΟΠ")
 const normKey = s => norm(s).replace(/[.'΄`’·]/g, "").replace(/[^A-Z0-9Α-Ω]+/g, " ").trim();
 function productKey(supplierId, l) { const c = normKey(l.code); return supplierId + "|" + (c ? "c:" + c : "d:" + normKey(l.description)); }

@@ -31,6 +31,10 @@ const SCHEMA = {
         email: S("STRING"),
       },
     },
+    buyer: {
+      type: "OBJECT",
+      properties: { name: S("STRING"), afm: S("STRING") },
+    },
     invoice: {
       type: "OBJECT",
       properties: {
@@ -73,7 +77,8 @@ function buildPrompt(ownAfm, categories, businessType) {
 
 Κανόνες:
 - supplier = ο ΕΚΔΟΤΗΣ του παραστατικού (πωλητής), συνήθως στην κεφαλίδα με το λογότυπο. ΟΧΙ ο πελάτης/αγοραστής (πεδία "Πελάτης", "Στοιχεία πελάτη", "Παραλήπτης", "Αγοραστής").
-${ownAfm ? `- Ο αγοραστής έχει ΑΦΜ ${ownAfm}. Αυτό το ΑΦΜ ΔΕΝ είναι ποτέ του προμηθευτή.\n` : ""}- afm: μόνο τα 9 ψηφία, χωρίς "EL", κενά ή τελείες.
+${ownAfm ? `- Ο αγοραστής έχει ΑΦΜ ${ownAfm}. Αυτό το ΑΦΜ ΔΕΝ είναι ποτέ του προμηθευτή.\n` : ""}- buyer = ο ΠΕΛΑΤΗΣ/αγοραστής στον οποίο εκδόθηκε το παραστατικό ("Στοιχεία πελάτη", "Πελάτης", "Αγοραστής"): επωνυμία και ΑΦΜ όπως είναι τυπωμένα. Αν δεν αναγράφεται αγοραστής (π.χ. απόδειξη λιανικής), null.
+- afm: μόνο τα 9 ψηφία, χωρίς "EL", κενά ή τελείες.
 - Αριθμοί: στα ελληνικά τιμολόγια το κόμμα είναι δεκαδικό και η τελεία χιλιάδες (1.234,56 = 1234.56). Επέστρεψε καθαρούς αριθμούς JSON.
 - Ημερομηνίες σε μορφή YYYY-MM-DD (π.χ. 05/03/2026 → 2026-03-05).
 - invoice.number: ο αριθμός παραστατικού μαζί με τη σειρά αν υπάρχει (π.χ. "Α 1234"). invoice.type: το είδος παραστατικού όπως είναι τυπωμένο.
@@ -97,6 +102,7 @@ ${categoryRules(categories, businessType)}`;
 // Αν το μοντέλο έδωσε 2 από τα 3 ποσά, υπολογίζουμε το τρίτο. Αν δεν έδωσε γραμμές, μία γραμμή με την καθαρή αξία.
 function fixTotals(r) {
   const inv = r && r.invoice; if (!inv) return r;
+  for (const who of [r.supplier, r.buyer]) if (who && who.afm != null) { const d = String(who.afm).replace(/\D/g, ""); who.afm = d.length === 9 ? d : null; }
   const n = (v) => (typeof v === "number" && isFinite(v) ? v : null);
   let net = n(inv.net_total), vat = n(inv.vat_total), tot = n(inv.total);
   const r2 = (x) => Math.round(x * 100) / 100;

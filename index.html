@@ -431,6 +431,7 @@ function resultToDraft(r) {
   const lines = (r.lines || []).map(l => ({ id: uid(), code: l.code || "", description: l.description || "", quantity: numStr(l.quantity), unit: l.unit || "", unitPrice: numStr(l.unit_price), discountPct: numStr(l.discount_pct), net: numStr(l.net_amount), vatPct: numStr(l.vat_pct), category: l.category || "" }));
   return {
     supplier: { afm: (s.afm || "").replace(/\D/g, ""), name: s.name || "", doy: s.doy || "", address: s.address || "", phone: s.phone || "", email: s.email || "" },
+    buyer: { name: (r.buyer && r.buyer.name) || "", afm: ((r.buyer && r.buyer.afm) || "").replace(/\D/g, "") }, buyerOk: false,
     invoice: { number: i.number || "", date: /^\d{4}-\d{2}-\d{2}$/.test(i.date || "") ? i.date : "", type: i.type || "", mark: i.mark || "", net: numStr(i.net_total), vat: numStr(i.vat_total), total: numStr(i.total), paymentMethod: i.payment_method || "", dueDate: /^\d{4}-\d{2}-\d{2}$/.test(i.due_date || "") ? i.due_date : "" },
     lines: lines.length ? lines : [emptyLine()], notes: r.notes || "",
   };
@@ -441,6 +442,7 @@ function invoiceToDraft(inv, sup) {
   sup = sup || {};
   return {
     supplier: { afm: sup.afm || "", name: sup.name || "", doy: sup.doy || "", address: sup.address || "", phone: sup.phone || "", email: sup.email || "" },
+    buyer: { name: inv.buyerName || "", afm: inv.buyerAfm || "" }, buyerOk: true,
     invoice: { number: inv.number || "", date: inv.date || "", type: inv.type || "", mark: inv.mark || "", net: numStr(inv.net), vat: numStr(inv.vat), total: numStr(inv.total), paymentMethod: inv.paymentMethod || "", dueDate: inv.dueDate || "" },
     lines: inv.lines.length ? inv.lines.map(l => ({ id: uid(), code: l.code || "", description: l.description || "", quantity: numStr(l.quantity), unit: l.unit || "", unitPrice: numStr(l.unitPrice), discountPct: numStr(l.discountPct), net: numStr(l.net), vatPct: numStr(l.vatPct), category: l.category || "" })) : [emptyLine()],
     notes: inv.notes || "",
@@ -476,7 +478,7 @@ function LinesEditor({ lines, onChange, categories = [] }) {
   );
 }
 
-function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, saving, onSave, onCancel, categories, readMeta, editing }) {
+function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, saving, onSave, onCancel, categories, readMeta, editing, ownAfm }) {
   const setS = (k, v) => setDraft(d => ({ ...d, supplier: { ...d.supplier, [k]: v } }));
   const setI = (k, v) => setDraft(d => ({ ...d, invoice: { ...d.invoice, [k]: v } }));
   const afm = draft.supplier.afm.replace(/\D/g, "");
@@ -485,17 +487,26 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
   const invNet = parseNum(draft.invoice.net);
   const mismatch = invNet != null && linesNet > 0 && Math.abs(linesNet - invNet) > 0.05;
   const totalCheck = (() => { const n = parseNum(draft.invoice.net), v = parseNum(draft.invoice.vat), t = parseNum(draft.invoice.total); return n != null && v != null && t != null && Math.abs(n + v - t) > 0.05; })();
+  const buyer = draft.buyer || { name: "", afm: "" };
+  const otherBuyer = !!(ownAfm && buyer.afm && buyer.afm !== ownAfm);
   const missing = [
     !draft.supplier.name.trim() && "επωνυμία προμηθευτή",
     !/^\d{4}-\d{2}-\d{2}$/.test(draft.invoice.date || "") && "ημερομηνία",
     parseNum(draft.invoice.total) == null && "σύνολο",
   ].filter(Boolean);
+  const blocked = missing.length > 0 || (otherBuyer && !draft.buyerOk);
   return (
     <div className={previews.length ? "review" : ""}>
       {previews.length > 0 && <div className="preview">{previews.map((p, i) => p.url ? <img key={i} src={p.url} alt="" /> : <div key={i} className="card sm mut">PDF: {p.name}</div>)}</div>}
       <div className="grid">
         {readMeta && <div className="mut sm">Διαβάστηκε από {readMeta.model}{readMeta.seconds != null ? ` σε ${readMeta.seconds}″` : ""}</div>}
         {missing.length > 0 && <div className="alert e">Δεν διαβάστηκε: <b>{missing.join(", ")}</b>. Συμπλήρωσέ τα από το έγγραφο για να γίνει η αποθήκευση.</div>}
+        {otherBuyer && (
+          <div className="alert e" style={{ flexDirection: "column", gap: 8 }}>
+            <div><b>Το τιμολόγιο δεν είναι για την επιχείρησή σου.</b> Εκδόθηκε στην «{buyer.name || "άλλη επιχείρηση"}» με ΑΦΜ {buyer.afm}, ενώ το ΑΦΜ στις Ρυθμίσεις είναι {ownAfm}. Αν το αποθηκεύσεις, θα μετρήσει στα έξοδα και στις τιμές σου.</div>
+            <label className="row" style={{ gap: 8, cursor: "pointer" }}><input type="checkbox" checked={!!draft.buyerOk} onChange={e => setDraft(d => ({ ...d, buyerOk: e.target.checked }))} /> Θέλω να το καταχωρήσω παρόλα αυτά</label>
+          </div>
+        )}
         {duplicate && <div className="alert e">⚠️ Υπάρχει ήδη τιμολόγιο {duplicate.number} από αυτόν τον προμηθευτή ({fmtDate(duplicate.date)}). Μήπως είναι διπλή καταχώρηση;</div>}
         {draft.notes && <div className="alert i">📝 {draft.notes}</div>}
         {(mismatch || totalCheck) && <div className="alert w">Έλεγξε τα ποσά: {mismatch && <>οι γραμμές αθροίζουν {fmtEur(linesNet)} ενώ η καθαρή αξία είναι {fmtEur(invNet)}. </>}{totalCheck && <>Καθαρή + ΦΠΑ δεν ισούται με το σύνολο.</>}</div>}
@@ -513,7 +524,7 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
         </div>
 
         <div className="card">
-          <h2>Παραστατικό</h2>
+          <div className="row mb"><h2 style={{ margin: 0 }}>Παραστατικό</h2><span className="sp" />{buyer.afm || buyer.name ? <span className={"badge " + (otherBuyer ? "b-up" : "b-down")}>Αγοραστής: {buyer.name || "—"}{buyer.afm ? `, ΑΦΜ ${buyer.afm}` : ""}</span> : null}</div>
           <div className="fgrid">
             <Field label="Αριθμός" value={draft.invoice.number} onChange={v => setI("number", v)} />
             <Field label="Ημερομηνία" type="date" value={draft.invoice.date} onChange={v => setI("date", v)} invalid={!draft.invoice.date} />
@@ -534,7 +545,7 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
         <div className="row">
           <button className="btn" onClick={onCancel}>Ακύρωση</button>
           <span className="sp" />
-          <button className="btn p" disabled={saving || missing.length > 0} onClick={onSave}>{saving ? "Αποθήκευση…" : editing ? "Αποθήκευση αλλαγών" : "Αποθήκευση τιμολογίου"}</button>
+          <button className="btn p" disabled={saving || blocked} onClick={onSave}>{saving ? "Αποθήκευση…" : editing ? "Αποθήκευση αλλαγών" : "Αποθήκευση τιμολογίου"}</button>
         </div>
       </div>
     </div>
@@ -633,7 +644,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
       <h1>{editInv ? "Επεξεργασία τιμολογίου" : "Έλεγχος στοιχείων"}</h1>
       <p className="sub">{editInv ? "Διόρθωσε ό,τι χρειάζεται και αποθήκευσε." : "Δες ότι διαβάστηκαν σωστά και διόρθωσε ό,τι χρειάζεται πριν την αποθήκευση."}</p>
       {error && <div className="alert e mb">{error}</div>}
-      <ReviewForm editing={!!editInv} readMeta={readMeta} categories={settings.categories || []} draft={draft} setDraft={setDraft} previews={files} duplicate={duplicate} matchedSupplier={matched} saving={saving} onSave={save} onCancel={reset} />
+      <ReviewForm ownAfm={/^\d{9}$/.test(settings.ownAfm || "") ? settings.ownAfm : ""} editing={!!editInv} readMeta={readMeta} categories={settings.categories || []} draft={draft} setDraft={setDraft} previews={files} duplicate={duplicate} matchedSupplier={matched} saving={saving} onSave={save} onCancel={reset} />
     </>
   );
 
@@ -1294,7 +1305,7 @@ function App() {
     const total = parseNum(draft.invoice.total) ?? (net != null && vat != null ? net + vat : net);
     const inv = {
       id: existing ? existing.id : uid(), supplierId: sup.id, number: draft.invoice.number.trim(), date: draft.invoice.date || todayISO(), type: draft.invoice.type.trim(), mark: draft.invoice.mark.trim(),
-      net, vat, total, paymentMethod: draft.invoice.paymentMethod.trim(), dueDate: draft.invoice.dueDate || "", lines, fileIds: existing ? existing.fileIds || [] : fileIds, notes: draft.notes || "", createdAt: existing ? existing.createdAt : Date.now(),
+      net, vat, total, paymentMethod: draft.invoice.paymentMethod.trim(), dueDate: draft.invoice.dueDate || "", lines, buyerName: ((draft.buyer || {}).name || "").trim(), buyerAfm: (draft.buyer || {}).afm || "", fileIds: existing ? existing.fileIds || [] : fileIds, notes: draft.notes || "", createdAt: existing ? existing.createdAt : Date.now(),
     };
     await dbPut("invoices", inv);
     if (newCats.length) await dbPut("meta", { ...settings, id: "settings", categories: [...knownCats, ...newCats] });

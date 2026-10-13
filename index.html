@@ -1208,12 +1208,12 @@ function SettingsPage({ settings, saveSettings, data, reload, toast, products, r
       <div className="card mb">
         <h2>Η επιχείρησή μου</h2>
         <div className="fgrid">
-          <Field label="Επωνυμία" wide value={s.businessName} onChange={v => setS(x => ({ ...x, businessName: v }))} />
+          <Field label="Επωνυμία" wide value={s.businessName} onChange={v => setS(x => ({ ...x, businessName: v }))} invalid={!(s.businessName || "").trim()} />
           <Field label="Είδος επιχείρησης" value={s.businessType} placeholder="π.χ. Ταβέρνα, Κομμωτήριο" onChange={v => setS(x => ({ ...x, businessType: v }))} hint="Βοηθά στη δημιουργία κατάλληλων κατηγοριών" />
-          <Field label="ΑΦΜ" value={s.ownAfm} inputMode="numeric" onChange={v => setS(x => ({ ...x, ownAfm: v.replace(/\D/g, "") }))} invalid={s.ownAfm && !validAfm(s.ownAfm)} hint="Βοηθά την ανάγνωση να μη μπερδεύει εσένα με τον προμηθευτή" />
+          <Field label="ΑΦΜ (υποχρεωτικό)" value={s.ownAfm} inputMode="numeric" onChange={v => setS(x => ({ ...x, ownAfm: v.replace(/\D/g, "").slice(0, 9) }))} invalid={!validAfm(s.ownAfm || "")} hint={validAfm(s.ownAfm || "") ? "Μόνο τιμολόγια με αυτό το ΑΦΜ αγοραστή μετράνε στα έξοδά σου" : "Χρειάζεται έγκυρο ΑΦΜ 9 ψηφίων"} />
           <Field label="Ειδοποίηση από μεταβολή %" inputMode="decimal" value={numStr(s.threshold)} onChange={v => setS(x => ({ ...x, threshold: v }))} />
         </div>
-        <div className="row mt"><span className="sp" /><button className="btn p" onClick={() => { saveSettings({ ...settings, businessName: s.businessName, businessType: (s.businessType || "").trim(), ownAfm: s.ownAfm, threshold: parseNum(s.threshold) ?? 1 }); toast("Αποθηκεύτηκε"); }}>Αποθήκευση</button></div>
+        <div className="row mt"><span className="sp" /><button className="btn p" disabled={!validAfm(s.ownAfm || "") || !(s.businessName || "").trim()} onClick={() => { saveSettings({ ...settings, businessName: s.businessName.trim(), businessType: (s.businessType || "").trim(), ownAfm: s.ownAfm, threshold: parseNum(s.threshold) ?? 1 }); toast("Αποθηκεύτηκε"); }}>Αποθήκευση</button></div>
       </div>
       <div className="card mb">
         <h2>Κατηγορίες ειδών</h2>
@@ -1249,6 +1249,30 @@ function SettingsPage({ settings, saveSettings, data, reload, toast, products, r
 /* =========================================================
    Εφαρμογή
    ========================================================= */
+// Πρώτη χρήση: χωρίς έγκυρο ΑΦΜ η εφαρμογή δεν ανοίγει
+function SetupScreen({ settings, onSave }) {
+  const [s, setS] = useState({ businessName: settings.businessName || "", ownAfm: settings.ownAfm || "", businessType: settings.businessType || "" });
+  const [saving, setSaving] = useState(false);
+  const afmOk = validAfm(s.ownAfm), nameOk = !!s.businessName.trim();
+  return (
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "linear-gradient(180deg,var(--ink) 0 220px,var(--paper) 220px)" }}>
+      <div style={{ width: "100%", maxWidth: 520 }}>
+        <div className="brand" style={{ padding: "0 4px 18px" }}><b>Τιμολόγια</b><span>από την AR Akron Services</span></div>
+        <form className="card" style={{ padding: 28 }} onSubmit={async e => { e.preventDefault(); if (!afmOk || !nameOk) return; setSaving(true); await onSave({ ...settings, businessName: s.businessName.trim(), ownAfm: s.ownAfm, businessType: s.businessType.trim() }); }}>
+          <h1>Στοιχεία επιχείρησης</h1>
+          <p className="sub">Τα χρειαζόμαστε για να ξέρουμε ποια τιμολόγια είναι δικά σου. Ένα τιμολόγιο που έχει εκδοθεί σε άλλο ΑΦΜ δεν θα μετρήσει στα έξοδά σου χωρίς την επιβεβαίωσή σου.</p>
+          <div className="grid" style={{ gap: 14 }}>
+            <Field label="ΑΦΜ επιχείρησης" value={s.ownAfm} inputMode="numeric" placeholder="9 ψηφία" onChange={v => setS(x => ({ ...x, ownAfm: v.replace(/\D/g, "").slice(0, 9) }))} invalid={s.ownAfm.length === 9 && !afmOk} hint={s.ownAfm.length === 9 && !afmOk ? "Αυτό το ΑΦΜ δεν είναι έγκυρο. Έλεγξε τα ψηφία." : "Όπως αναγράφεται στα τιμολόγια που λαμβάνεις"} />
+            <Field label="Επωνυμία" value={s.businessName} placeholder="π.χ. Plaki Επισιτιστική ΙΚΕ" onChange={v => setS(x => ({ ...x, businessName: v }))} />
+            <Field label="Είδος επιχείρησης (προαιρετικό)" value={s.businessType} placeholder="π.χ. Ταβέρνα, Κομμωτήριο" onChange={v => setS(x => ({ ...x, businessType: v }))} hint="Βοηθά στη δημιουργία κατάλληλων κατηγοριών ειδών" />
+          </div>
+          <button className="btn g mt" style={{ width: "100%", padding: "11px 14px" }} disabled={!afmOk || !nameOk || saving}>{saving ? "Αποθήκευση…" : "Συνέχεια"}</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 const DEFAULT_SETTINGS = { id: "settings", businessName: "", businessType: "", ownAfm: "", threshold: 1, categories: [], productCats: {}, readAlerts: [] };
 const NAV = [["home", "Αρχική", "home"], ["invoices", "Τιμολόγια", "doc"], ["suppliers", "Προμηθευτές", "truck"], ["products", "Είδη & τιμές", "box"], ["alerts", "Ειδοποιήσεις", "bell"], ["settings", "Ρυθμίσεις", "gear"]];
 
@@ -1358,6 +1382,7 @@ function App() {
   async function updateSupplier(s) { await dbPut("suppliers", s); await reload(); setToastMsg("Αποθηκεύτηκε"); }
 
   if (!ready) return <div className="empty" style={{ paddingTop: 120 }}><div className="spin" /></div>;
+  if (!validAfm(settings.ownAfm || "")) return <SetupScreen settings={settings} onSave={saveSettings} />;
 
   const openInv = invoiceId && data.invoices.find(i => i.id === invoiceId);
   const openProd = productKeyOpen && prodByKey[productKeyOpen];

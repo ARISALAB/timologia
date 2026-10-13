@@ -1,0 +1,4 @@
+[build]
+  publish = "."
+
+# Το /api/extract ορίζεται μέσα στο netlify/edge-functions/extract.js (config.path)

@@ -183,7 +183,9 @@ function validAfm(a) {
   return (s % 11) % 10 === Number(a[8]);
 }
 function effPrice(l) { if (l.unitPrice == null) return null; return l.unitPrice * (1 - (l.discountPct || 0) / 100); }
-function productKey(supplierId, l) { const c = norm(l.code); return supplierId + "|" + (c ? "c:" + c : "d:" + norm(l.description)); }
+// Κλειδί σύγκρισης: αγνοεί τόνους, κεφαλαία, τελείες και σύμβολα ("Φέτα Π.Ο.Π." = "ΦΕΤΑ ΠΟΠ")
+const normKey = s => norm(s).replace(/[.'΄`’·]/g, "").replace(/[^A-Z0-9Α-Ω]+/g, " ").trim();
+function productKey(supplierId, l) { const c = normKey(l.code); return supplierId + "|" + (c ? "c:" + c : "d:" + normKey(l.description)); }
 const pctChange = (a, b) => (a && b != null) ? (b - a) / a * 100 : null;
 
 function periodRange(p) {
@@ -221,13 +223,17 @@ function download(name, content, type) {
 function buildProducts(invoices) {
   const map = new Map();
   const sorted = [...invoices].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
-  for (const inv of sorted) for (const l of inv.lines) {
-    const p = effPrice(l); if (p == null || p <= 0) continue;
-    const key = productKey(inv.supplierId, l);
-    let e = map.get(key);
-    if (!e) { e = { key, supplierId: inv.supplierId, code: l.code, description: l.description, unit: l.unit, history: [] }; map.set(key, e); }
-    if (l.description) e.description = l.description; if (l.unit) e.unit = l.unit; if (l.code) e.code = l.code;
-    e.history.push({ date: inv.date, price: p, qty: l.quantity, invoiceId: inv.id, invoiceNo: inv.number });
+  for (const inv of sorted) {
+    const seen = new Set();
+    for (const l of inv.lines) {
+      const p = effPrice(l); if (p == null || p <= 0) continue;
+      const key = productKey(inv.supplierId, l);
+      if (seen.has(key)) continue; seen.add(key); // ίδιο είδος δύο φορές στο ίδιο τιμολόγιο → μία εγγραφή
+      let e = map.get(key);
+      if (!e) { e = { key, supplierId: inv.supplierId, code: l.code, description: l.description, unit: l.unit, history: [] }; map.set(key, e); }
+      if (l.description) e.description = l.description; if (l.unit) e.unit = l.unit; if (l.code) e.code = l.code;
+      e.history.push({ date: inv.date, price: p, qty: l.quantity, invoiceId: inv.id, invoiceNo: inv.number, createdAt: inv.createdAt });
+    }
   }
   return [...map.values()].map(e => {
     const h = e.history, last = h[h.length - 1], prev = h.length > 1 ? h[h.length - 2] : null;
@@ -236,25 +242,21 @@ function buildProducts(invoices) {
   });
 }
 
-/* Ειδοποιήσεις τιμών για ένα νέο τιμολόγιο */
-function detectAlerts(inv, invoices, threshold) {
+/* Ειδοποιήσεις τιμών: υπολογίζονται από όλο το ιστορικό, άρα δεν εξαρτώνται από τη σειρά καταχώρησης */
+function buildAlerts(products, threshold) {
   const out = [];
-  const seen = new Set();
-  for (const l of inv.lines) {
-    const p = effPrice(l); if (p == null || p <= 0) continue;
-    const key = productKey(inv.supplierId, l); if (seen.has(key)) continue; seen.add(key);
-    let prev = null;
-    for (const o of invoices) {
-      if (o.id === inv.id || o.supplierId !== inv.supplierId || o.date > inv.date) continue;
-      for (const ol of o.lines) {
-        if (productKey(o.supplierId, ol) !== key) continue;
-        const op = effPrice(ol); if (op == null || op <= 0) continue;
-        if (!prev || o.date > prev.date || (o.date === prev.date && o.createdAt > prev.createdAt)) prev = { date: o.date, price: op, createdAt: o.createdAt };
-      }
+  for (const p of products) {
+    const h = p.history;
+    for (let i = 1; i < h.length; i++) {
+      const pct = pctChange(h[i - 1].price, h[i].price);
+      if (pct == null || Math.abs(pct) < threshold || Math.abs(pct) < 0.01) continue;
+      out.push({
+        id: p.key + "|" + h[i].invoiceId, invoiceId: h[i].invoiceId, supplierId: p.supplierId, productKey: p.key,
+        code: p.code, description: p.description, unit: p.unit,
+        oldPrice: h[i - 1].price, newPrice: h[i].price, oldDate: h[i - 1].date, newDate: h[i].date,
+        pct, qty: h[i].qty, createdAt: h[i].createdAt || 0,
+      });
     }
-    if (!prev) continue;
-    const pct = pctChange(prev.price, p);
-    if (Math.abs(pct) >= threshold) out.push({ id: uid(), invoiceId: inv.id, supplierId: inv.supplierId, productKey: key, code: l.code, description: l.description, unit: l.unit, oldPrice: prev.price, newPrice: p, oldDate: prev.date, newDate: inv.date, pct, qty: l.quantity, read: false, createdAt: Date.now() });
   }
   return out;
 }
@@ -436,6 +438,16 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
 /* =========================================================
    Σελίδα σάρωσης
    ========================================================= */
+function ReadingCard() {
+  const [sec, setSec] = useState(0);
+  useEffect(() => { const t = setInterval(() => setSec(s => s + 1), 1000); return () => clearInterval(t); }, []);
+  return (
+    <div className="card" style={{ textAlign: "center", padding: "60px 20px" }}>
+      <div className="spin" /><b>Διαβάζω το τιμολόγιο… {sec}″</b>
+      <div className="mut sm" style={{ marginTop: 6 }}>{sec < 15 ? "Συνήθως 5–15 δευτερόλεπτα" : "Το Gemini αργεί σήμερα, δοκιμάζω και εφεδρικό μοντέλο…"}</div>
+    </div>
+  );
+}
 function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
   const [files, setFiles] = useState([]);       // {id, blob, mimeType, url, name}
   const [phase, setPhase] = useState("pick");   // pick | reading | review | done
@@ -471,7 +483,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
       const ct = res.headers.get("content-type") || "";
       if (!ct.includes("application/json")) throw new Error("Η ανάγνωση δουλεύει μόνο όταν η εφαρμογή τρέχει στο Netlify (ή με netlify dev).");
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "Σφάλμα ανάγνωσης");
+      if (!res.ok) throw new Error((j.error || "Σφάλμα ανάγνωσης") + (j.tried && j.tried.length ? ` [${j.tried.join(" · ")}]` : ""));
       setDraft(resultToDraft(j.result)); setPhase("review");
     } catch (e) { setError(e.message || String(e)); setPhase("pick"); }
   }
@@ -495,7 +507,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts }) {
     setSaving(false);
   }
 
-  if (phase === "reading") return <div className="card" style={{ textAlign: "center", padding: "60px 20px" }}><div className="spin" /><b>Διαβάζω το τιμολόγιο…</b><div className="mut sm" style={{ marginTop: 6 }}>Συνήθως 5–15 δευτερόλεπτα</div></div>;
+  if (phase === "reading") return <ReadingCard />;
 
   if (phase === "review") return (
     <>
@@ -971,7 +983,12 @@ function App() {
   const supById = useMemo(() => Object.fromEntries(data.suppliers.map(s => [s.id, s])), [data.suppliers]);
   const products = useMemo(() => buildProducts(data.invoices), [data.invoices]);
   const prodByKey = useMemo(() => Object.fromEntries(products.map(p => [p.key, p])), [products]);
-  const unread = data.alerts.filter(a => !a.read).length;
+  const alerts = useMemo(() => {
+    const readSet = new Set(settings.readAlerts || []);
+    return buildAlerts(products, Number(settings.threshold) || 0).map(a => ({ ...a, read: readSet.has(a.id) }));
+  }, [products, settings.threshold, settings.readAlerts]);
+  const vdata = useMemo(() => ({ ...data, alerts }), [data, alerts]);
+  const unread = alerts.filter(a => !a.read).length;
 
   function go(p) { setPage(p); setSupplierId(null); window.scrollTo(0, 0); }
   function openSupplier(id) { setInvoiceId(null); setProductKeyOpen(null); setPage("suppliers"); setSupplierId(id); window.scrollTo(0, 0); }
@@ -995,11 +1012,10 @@ function App() {
       id: uid(), supplierId: sup.id, number: draft.invoice.number.trim(), date: draft.invoice.date || todayISO(), type: draft.invoice.type.trim(), mark: draft.invoice.mark.trim(),
       net, vat, total, paymentMethod: draft.invoice.paymentMethod.trim(), dueDate: draft.invoice.dueDate || "", lines, fileIds, notes: draft.notes || "", createdAt: Date.now(),
     };
-    const alerts = detectAlerts(inv, data.invoices, Number(settings.threshold) || 0);
     await dbPut("invoices", inv);
-    for (const a of alerts) await dbPut("alerts", a);
     await reload();
-    return { inv, alerts };
+    const newAlerts = buildAlerts(buildProducts([...data.invoices, inv]), Number(settings.threshold) || 0).filter(a => a.invoiceId === inv.id);
+    return { inv, alerts: newAlerts };
   }
 
   async function deleteInvoice(id) {
@@ -1009,7 +1025,7 @@ function App() {
     for (const a of data.alerts.filter(a => a.invoiceId === id)) await dbDel("alerts", a.id);
     setInvoiceId(null); await reload(); setToastMsg("Το τιμολόγιο διαγράφηκε");
   }
-  async function markAllRead() { for (const a of data.alerts.filter(a => !a.read)) await dbPut("alerts", { ...a, read: true }); await reload(); }
+  async function markAllRead() { await dbPut("meta", { ...settings, id: "settings", readAlerts: alerts.map(a => a.id) }); await reload(); }
   async function saveSettings(s) { await dbPut("meta", { ...s, id: "settings" }); await reload(); }
   async function updateSupplier(s) { await dbPut("suppliers", s); await reload(); setToastMsg("Αποθηκεύτηκε"); }
 
@@ -1020,15 +1036,15 @@ function App() {
   const supplier = supplierId && supById[supplierId];
 
   let content;
-  if (page === "scan") content = <ScanPage data={data} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} />;
-  else if (page === "invoices") content = <InvoicesPage data={data} supById={supById} openInvoice={setInvoiceId} />;
+  if (page === "scan") content = <ScanPage data={vdata} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} />;
+  else if (page === "invoices") content = <InvoicesPage data={vdata} supById={supById} openInvoice={setInvoiceId} />;
   else if (page === "suppliers") content = supplier
-    ? <SupplierDetail key={supplier.id} supplier={supplier} data={data} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} />
-    : <SuppliersPage data={data} openSupplier={openSupplier} />;
+    ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} />
+    : <SuppliersPage data={vdata} openSupplier={openSupplier} />;
   else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} />;
-  else if (page === "alerts") content = <AlertsPage data={data} supById={supById} settings={settings} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
-  else if (page === "settings") content = <SettingsPage settings={settings} saveSettings={saveSettings} data={data} reload={reload} toast={setToastMsg} />;
-  else content = <Dashboard data={data} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} />;
+  else if (page === "alerts") content = <AlertsPage data={vdata} supById={supById} settings={settings} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
+  else if (page === "settings") content = <SettingsPage settings={settings} saveSettings={saveSettings} data={vdata} reload={reload} toast={setToastMsg} />;
+  else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} />;
 
   return (
     <>

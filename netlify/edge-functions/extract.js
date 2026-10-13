@@ -113,20 +113,27 @@ export default async (request) => {
     .split(",").map((m) => m.trim()).filter(Boolean);
 
   const started = Date.now();
+  const tried = []; // π.χ. "gemini-3.8-flash: 503" — εμφανίζεται στην εφαρμογή αν αποτύχουν όλα
   let lastStatus = 0, lastMsg = "";
 
   for (const model of models) {
-    // Κάθε μοντέλο: μία προσπάθεια + μία επανάληψη αν είναι υπερφορτωμένο.
-    for (let attempt = 0; attempt < 2; attempt++) {
-      if (Date.now() - started > 28000) break; // μένουμε κάτω από το όριο χρόνου του Netlify
+    const left = 36000 - (Date.now() - started); // το Netlify κόβει στα ~40″
+    if (left < 6000) { tried.push(`${model}: δεν έμεινε χρόνος`); break; }
 
+    let thinking = true;
+    for (let attempt = 0; attempt < 2; attempt++) {
       const generationConfig = { temperature: 0, responseMimeType: "application/json", responseSchema: SCHEMA };
-      if (model.includes("2.5")) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      // Λίγη "σκέψη" = πιο γρήγορη απάντηση. Η εξαγωγή τιμολογίου δεν χρειάζεται βαθιά συλλογιστική.
+      if (thinking) {
+        if (/gemini-2\.5/.test(model)) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        else if (/gemini-3/.test(model)) generationConfig.thinkingConfig = { thinkingLevel: "low" };
+      }
 
       let res, data;
+      const t0 = Date.now();
       try {
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 25000);
+        const timer = setTimeout(() => ctrl.abort(), Math.min(left - 1000, 30000));
         res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
           {
@@ -140,38 +147,38 @@ export default async (request) => {
         data = await res.json().catch(() => null);
       } catch (e) {
         lastStatus = 504; lastMsg = "Το Gemini άργησε να απαντήσει.";
+        tried.push(`${model}: timeout ${Math.round((Date.now() - t0) / 1000)}″`);
         break; // επόμενο μοντέλο
       }
 
+      const secs = Math.round((Date.now() - t0) / 1000);
       if (res.ok) {
         const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
         try {
-          return json({ result: JSON.parse(text), model, usage: data?.usageMetadata || null });
+          return json({ result: JSON.parse(text), model, seconds: secs, tried, usage: data?.usageMetadata || null });
         } catch {
           lastStatus = 502; lastMsg = "Το Gemini δεν επέστρεψε έγκυρα δεδομένα. Δοκίμασε πιο καθαρή φωτογραφία.";
+          tried.push(`${model}: άκυρο JSON`);
           break;
         }
       }
 
       lastStatus = res.status;
       lastMsg = data?.error?.message || `Σφάλμα Gemini (${res.status})`;
+      tried.push(`${model}: ${res.status}`);
 
-      // Υπερφόρτωση / προσωρινό σφάλμα: μικρή αναμονή και ξανά στο ίδιο μοντέλο.
-      if ((res.status === 503 || res.status === 500) && attempt === 0) {
-        await new Promise((r) => setTimeout(r, 1500));
-        continue;
-      }
-      // 429 (όριο), 404 (μοντέλο μη διαθέσιμο), 503 ξανά κ.λπ.: πάμε στο επόμενο μοντέλο.
-      if ([400, 403].includes(res.status) && !/model/i.test(lastMsg)) {
-        return json({ error: lastMsg }, 502); // πρόβλημα αιτήματος/κλειδιού, όχι μοντέλου
-      }
+      // Αν το μοντέλο δεν δέχεται τη ρύθμιση thinking, ξανά χωρίς αυτήν.
+      if (res.status === 400 && thinking && /thinking/i.test(lastMsg)) { thinking = false; continue; }
+      // Σφάλμα κλειδιού/αιτήματος (όχι μοντέλου): δεν έχει νόημα να δοκιμάσουμε άλλο μοντέλο.
+      if ([400, 401, 403].includes(res.status) && !/model/i.test(lastMsg)) return json({ error: lastMsg, tried }, 502);
+      // 503 υπερφόρτωση, 429 όριο, 404 μη διαθέσιμο: κατευθείαν στο επόμενο μοντέλο (πιο γρήγορο από αναμονή).
       break;
     }
   }
 
-  if (lastStatus === 429) return json({ error: "Έφτασες το όριο του δωρεάν Gemini. Δοκίμασε ξανά σε ένα λεπτό." }, 429);
-  if (lastStatus === 503 || lastStatus === 500) return json({ error: "Το Gemini είναι προσωρινά υπερφορτωμένο. Δοκίμασε ξανά σε λίγο." }, 503);
-  return json({ error: lastMsg || "Αποτυχία ανάγνωσης." }, 502);
+  if (lastStatus === 429) return json({ error: "Έφτασες το όριο του δωρεάν Gemini. Δοκίμασε ξανά σε ένα λεπτό.", tried }, 429);
+  if (lastStatus === 503 || lastStatus === 500) return json({ error: "Το Gemini είναι προσωρινά υπερφορτωμένο. Δοκίμασε ξανά σε λίγο.", tried }, 503);
+  return json({ error: lastMsg || "Αποτυχία ανάγνωσης.", tried }, 502);
 };
 
 export const config = { path: "/api/extract" };

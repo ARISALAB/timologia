@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1C2230">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Προμηθευτής+ | AR Akron</title>
+<title>PriceArmor | AR Akron</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1269,7 +1269,7 @@ function SetupScreen({ settings, onSave }) {
   return (
     <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "linear-gradient(180deg,var(--ink) 0 220px,var(--paper) 220px)" }}>
       <div style={{ width: "100%", maxWidth: 520 }}>
-        <div className="brand" style={{ padding: "0 4px 18px" }}><b>Προμηθευτής<em>+</em></b><span>από την AR Akron Services</span></div>
+        <div className="brand" style={{ padding: "0 4px 18px" }}><b>Price<em>Armor</em></b><span>από την AR Akron Services</span></div>
         <form className="card" style={{ padding: 28 }} onSubmit={async e => { e.preventDefault(); if (!afmOk || !nameOk) return; setSaving(true); await onSave({ ...settings, businessName: s.businessName.trim(), ownAfm: s.ownAfm, businessType: s.businessType.trim() }); }}>
           <h1>Στοιχεία επιχείρησης</h1>
           <p className="sub">Τα χρειαζόμαστε για να ξέρουμε ποια τιμολόγια είναι δικά σου. Ένα τιμολόγιο που έχει εκδοθεί σε άλλο ΑΦΜ δεν θα μετρήσει στα έξοδά σου χωρίς την επιβεβαίωσή σου.</p>
@@ -1415,13 +1415,13 @@ function App() {
   return (
     <>
       <div className="mtop">
-        <div className="brand"><b>Προμηθευτής<em>+</em></b><span>AR Akron</span></div><span className="sp" />
+        <div className="brand"><b>Price<em>Armor</em></b><span>AR Akron</span></div><span className="sp" />
         <button className="icbtn" onClick={() => go("alerts")} aria-label="Ειδοποιήσεις"><Icon n="bell" />{unread > 0 && <span className="dot" />}</button>
         <button className="icbtn" onClick={() => go("settings")} aria-label="Ρυθμίσεις"><Icon n="gear" /></button>
       </div>
       <div className="app">
         <aside className="side">
-          <div className="brand"><b>Προμηθευτής<em>+</em></b><span>από την AR Akron Services</span></div>
+          <div className="brand"><b>Price<em>Armor</em></b><span>από την AR Akron Services</span></div>
           <button className="nav scanbtn" onClick={() => go("scan")}><Icon n="cam" /> Νέο τιμολόγιο</button>
           {NAV.map(([k, l, ic]) => (
             <button key={k} className={"nav" + (page === k ? " on" : "")} onClick={() => go(k)}><Icon n={ic} /> {l}{k === "alerts" && unread > 0 && <span className="cnt">{unread}</span>}</button>

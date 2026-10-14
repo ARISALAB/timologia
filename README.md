@@ -1,9 +1,9 @@
-# Προμηθευτής+ (beta)
+# PriceArmor (beta)
 
 Σάρωση τιμολογίων προμηθευτών με Gemini, καρτέλες προμηθευτών, ιστορικό τιμών και ειδοποιήσεις αλλαγής τιμών.
 
 ## Αρχεία
-- `index.html`: landing page του Προμηθευτής+.
+- `index.html`: landing page του PriceArmor.
 - `app/index.html`: η εφαρμογή (React μέσω CDN). Τα δεδομένα αποθηκεύονται στη συσκευή (IndexedDB).
 - `netlify/edge-functions/extract.js` — `/api/extract`: στέλνει τις φωτογραφίες/PDF στο Gemini και επιστρέφει JSON.
 - `netlify.toml`

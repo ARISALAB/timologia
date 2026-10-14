@@ -134,6 +134,14 @@ input.in:focus,select.in:focus{outline:2px solid var(--brass-soft);border-color:
 .drop.over{border-color:var(--brass);background:var(--brass-soft)}
 .drop-t{font-size:17px;font-weight:650;margin-bottom:4px}
 .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.batch-cta{display:flex;align-items:center;gap:14px;margin-top:12px;padding:14px 18px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card);cursor:pointer}
+.batch-cta:hover{border-color:var(--brass)}
+.pbar{height:6px;background:var(--line2);border-radius:99px;overflow:hidden} .pbar>div{height:100%;background:var(--brass);transition:width .4s}
+.bitem{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line2)} .bitem:first-child{border-top:0}
+.bth{width:44px;height:44px;flex:0 0 44px;border-radius:6px;border:1px solid var(--line);overflow:hidden;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--muted);background:var(--paper)}
+.bth img{width:100%;height:100%;object-fit:cover}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+@media (max-width:700px){ .batch-cta{flex-wrap:wrap} .bitem{flex-wrap:wrap} .bitem>.row.nw{width:100%;justify-content:flex-end} }
 .thumb{position:relative;width:96px;height:124px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
 .thumb img{width:100%;height:100%;object-fit:cover}
 .thumb button{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:99px;border:0;background:rgba(28,34,48,.75);color:#fff;cursor:pointer;line-height:1}
@@ -586,6 +594,41 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
 /* =========================================================
    Σελίδα σάρωσης
    ========================================================= */
+// Κλήση ανάγνωσης (κοινή για ένα και για πολλά τιμολόγια)
+async function extractFiles(files, st) {
+  const payload = { files: await Promise.all(files.map(async f => ({ mimeType: f.mimeType, data: await blobToBase64(f.blob) }))), ownAfm: st.ownAfm || "", categories: st.categories || [], businessType: st.businessType || "" };
+  const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) throw new Error("Η ανάγνωση δουλεύει μόνο όταν η εφαρμογή τρέχει στο Netlify (ή με netlify dev).");
+  const j = await res.json();
+  if (!res.ok || j.error) throw new Error((j.error || "Σφάλμα ανάγνωσης") + (j.tried && j.tried.length ? ` [${j.tried.join(", ")}]` : ""));
+  return j;
+}
+// Αρχείο από τον υπολογιστή → αντικείμενο για ανάγνωση (οι φωτογραφίες συμπιέζονται)
+async function prepFile(f) {
+  if (f.type === "application/pdf") { if (f.size > 4 * 1024 * 1024) throw new Error("Το PDF " + f.name + " είναι πάνω από 4 MB."); return { id: uid(), blob: f, mimeType: "application/pdf", url: null, name: f.name }; }
+  if (f.type.startsWith("image/")) { try { const b = await compressImage(f); return { id: uid(), blob: b, mimeType: "image/jpeg", url: URL.createObjectURL(b), name: f.name }; } catch { throw new Error("Δεν άνοιξε η εικόνα " + f.name + ". Δοκίμασε JPG ή PNG."); } }
+  return null;
+}
+// Πότε ένα τιμολόγιο από μαζικό ανέβασμα ΔΕΝ αποθηκεύεται αυτόματα (επιστρέφει τους λόγους)
+async function batchProblems(draft, ownAfm) {
+  const [sups, invs] = await Promise.all([dbAll("suppliers"), dbAll("invoices")]);
+  const afm = draft.supplier.afm.replace(/\D/g, "");
+  const sup = (afm && sups.find(s => s.afm === afm)) || (draft.supplier.name && sups.find(s => norm(s.name) === norm(draft.supplier.name)));
+  const out = [];
+  if (!draft.supplier.name.trim()) out.push("δεν βρέθηκε ο προμηθευτής");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.invoice.date || "")) out.push("λείπει η ημερομηνία");
+  if (parseNum(draft.invoice.total) == null) out.push("λείπει το σύνολο");
+  const b = draft.buyer || {};
+  if (ownAfm && b.afm && b.afm !== ownAfm) out.push("είναι για άλλο ΑΦΜ (" + b.afm + ")");
+  if (sup && draft.invoice.number && invs.some(i => i.supplierId === sup.id && norm(i.number) === norm(draft.invoice.number))) out.push("υπάρχει ήδη");
+  const n = parseNum(draft.invoice.net), v = parseNum(draft.invoice.vat), t = parseNum(draft.invoice.total);
+  if (n != null && v != null && t != null && Math.abs(n + v - t) > 0.05) out.push("τα ποσά δεν συμφωνούν");
+  if (!draft.lines.some(l => (l.description || "").trim() && parseNum(l.net))) out.push("δεν βρέθηκαν είδη");
+  return out;
+}
+const BATCH_MAX = 30, BATCH_PAR = 2;
+
 function ReadingCard() {
   const [sec, setSec] = useState(0);
   useEffect(() => { const t = setInterval(() => setSec(s => s + 1), 1000); return () => clearInterval(t); }, []);
@@ -605,7 +648,57 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
   const [over, setOver] = useState(false);
   const [saving, setSaving] = useState(false);
   const [doneInfo, setDoneInfo] = useState(null);
-  const camRef = useRef(), fileRef = useRef();
+  const camRef = useRef(), fileRef = useRef(), batchRef = useRef();
+  // Μαζικό ανέβασμα: κάθε αρχείο = ένα τιμολόγιο
+  const [items, setItems] = useState([]);       // {id, file, status: wait|reading|saved|review|skip|error, draft, meta, reasons, error, inv, alerts}
+  const [batchId, setBatchId] = useState(null); // ποιο στοιχείο ελέγχεται τώρα στη φόρμα
+  const [running, setRunning] = useState(false);
+  const queue = useRef([]), active = useRef(0), saveChain = useRef(Promise.resolve());
+  const upd = (id, patch) => setItems(its => its.map(x => x.id === id ? { ...x, ...patch } : x));
+  useEffect(() => {
+    if (!running) return;
+    const h = e => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h); return () => window.removeEventListener("beforeunload", h);
+  }, [running]);
+
+  async function startBatch(list) {
+    setError("");
+    const arr = [...list].slice(0, BATCH_MAX), out = [], errs = [];
+    for (const f of arr) { try { const x = await prepFile(f); if (x) out.push({ id: x.id, file: x, status: "wait" }); } catch (e) { errs.push(e.message); } }
+    if (list.length > BATCH_MAX) errs.push(`Πάρθηκαν τα πρώτα ${BATCH_MAX} αρχεία. Τα υπόλοιπα ανέβασέ τα σε δεύτερο γύρο.`);
+    if (errs.length) setError(errs.join(" "));
+    if (!out.length) return;
+    setItems(out); setPhase("batch");
+    queue.current = out.map(x => x.id); pump(out);
+  }
+  function pump(list) {
+    while (active.current < BATCH_PAR && queue.current.length) {
+      const id = queue.current.shift(); active.current++; setRunning(true);
+      processItem(id, list).finally(() => { active.current--; if (!queue.current.length && !active.current) setRunning(false); pump(list); });
+    }
+  }
+  const fileOf = useRef({});
+  async function processItem(id, list) {
+    const it = (list || []).find(x => x.id === id) || { file: fileOf.current[id] };
+    fileOf.current[id] = it.file;
+    upd(id, { status: "reading", error: "" });
+    try {
+      const st = { ...settings, ...((await dbGet("meta", "settings")) || {}) };
+      const j = await extractFiles([it.file], st);
+      const draft = resultToDraft(j.result), meta = { model: j.model, seconds: j.seconds, tried: j.tried || [] };
+      const own = /^\d{9}$/.test(st.ownAfm || "") ? st.ownAfm : "";
+      // Έλεγχος + αποθήκευση ένα-ένα, για να πιάνονται και τα διπλά μέσα στην ίδια παρτίδα
+      const r = await (saveChain.current = saveChain.current.catch(() => {}).then(async () => {
+        const reasons = await batchProblems(draft, own);
+        return reasons.length ? { reasons } : { saved: await saveDraft(draft, [it.file]) };
+      }));
+      if (r.saved) upd(id, { status: "saved", inv: r.saved.inv, alerts: r.saved.alerts, draft: null });
+      else upd(id, { status: "review", draft, meta, reasons: r.reasons });
+    } catch (e) { upd(id, { status: "error", error: e.message || String(e) }); }
+  }
+  function retryItem(id) { queue.current.push(id); pump(items); }
+  function reviewItem(it) { setBatchId(it.id); setDraft(it.draft); setFiles([it.file]); setReadMeta(it.meta); setError(""); setPhase("review"); window.scrollTo(0, 0); }
+  function backToBatch() { setBatchId(null); setDraft(null); setFiles([]); setReadMeta(null); setError(""); setPhase("batch"); window.scrollTo(0, 0); }
 
   useEffect(() => () => files.forEach(f => f.url && URL.revokeObjectURL(f.url)), []); // eslint-disable-line
   // Σε επεξεργασία: φόρτωσε τις αποθηκευμένες φωτογραφίες για προβολή δίπλα στη φόρμα
@@ -636,17 +729,12 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
   async function read() {
     setPhase("reading"); setError("");
     try {
-      const payload = { files: await Promise.all(files.map(async f => ({ mimeType: f.mimeType, data: await blobToBase64(f.blob) }))), ownAfm: settings.ownAfm || "", categories: settings.categories || [], businessType: settings.businessType || "" };
-      const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const ct = res.headers.get("content-type") || "";
-      if (!ct.includes("application/json")) throw new Error("Η ανάγνωση δουλεύει μόνο όταν η εφαρμογή τρέχει στο Netlify (ή με netlify dev).");
-      const j = await res.json();
-      if (!res.ok || j.error) throw new Error((j.error || "Σφάλμα ανάγνωσης") + (j.tried && j.tried.length ? ` [${j.tried.join(", ")}]` : ""));
+      const j = await extractFiles(files, settings);
       setDraft(resultToDraft(j.result)); setReadMeta({ model: j.model, seconds: j.seconds, tried: j.tried || [] }); setPhase("review");
     } catch (e) { setError(e.message || String(e)); setPhase("pick"); }
   }
 
-  function reset() { if (editInv) { onEditDone(editInv.id); return; } setReadMeta(null); files.forEach(f => f.url && URL.revokeObjectURL(f.url)); setFiles([]); setDraft(null); setPhase("pick"); setError(""); setDoneInfo(null); }
+  function reset() { if (editInv) { onEditDone(editInv.id); return; } if (batchId) { backToBatch(); return; } items.forEach(x => x.file.url && URL.revokeObjectURL(x.file.url)); setItems([]); setReadMeta(null); files.forEach(f => f.url && URL.revokeObjectURL(f.url)); setFiles([]); setDraft(null); setPhase("pick"); setError(""); setDoneInfo(null); }
 
   const matched = useMemo(() => {
     if (!draft) return null;
@@ -662,6 +750,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
     setSaving(true);
     try {
       if (editInv) { await saveDraft(draft, [], editInv); onEditDone(editInv.id); return; }
+      if (batchId) { const r = await saveDraft(draft, files); upd(batchId, { status: "saved", inv: r.inv, alerts: r.alerts, draft: null }); setSaving(false); backToBatch(); return; }
       const r = await saveDraft(draft, files); setDoneInfo(r); setPhase("done");
     }
     catch (e) { setError("Αποτυχία αποθήκευσης: " + e.message); }
@@ -672,12 +761,57 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
 
   if (phase === "review") return (
     <>
+      {batchId && <button className="btn sm mb" onClick={backToBatch}><Icon n="back" /> Πίσω στη λίστα</button>}
       <h1>{editInv ? "Επεξεργασία τιμολογίου" : "Έλεγχος στοιχείων"}</h1>
       <p className="sub">{editInv ? "Διόρθωσε ό,τι χρειάζεται και αποθήκευσε." : "Δες ότι διαβάστηκαν σωστά και διόρθωσε ό,τι χρειάζεται πριν την αποθήκευση."}</p>
       {error && <div className="alert e mb">{error}</div>}
       <ReviewForm ownAfm={/^\d{9}$/.test(settings.ownAfm || "") ? settings.ownAfm : ""} editing={!!editInv} readMeta={readMeta} categories={settings.categories || []} draft={draft} setDraft={setDraft} previews={files} duplicate={duplicate} matchedSupplier={matched} saving={saving} onSave={save} onCancel={reset} />
     </>
   );
+
+  if (phase === "batch") {
+    const c = k => items.filter(x => x.status === k).length;
+    const finished = c("saved") + c("review") + c("error") + c("skip"), nAlerts = sum(items, x => (x.alerts || []).length);
+    const label = { wait: ["b-eq", "Σε αναμονή"], reading: ["b-warn", "Διαβάζεται…"], saved: ["b-down", "Αποθηκεύτηκε"], review: ["b-up", "Θέλει έλεγχο"], skip: ["b-eq", "Παραλείφθηκε"], error: ["b-up", "Απέτυχε"] };
+    return (
+      <>
+        <h1>Πολλά τιμολόγια</h1>
+        <p className="sub">{running ? `Διαβάζω ${finished + 1 > items.length ? items.length : finished + 1} από ${items.length}. Άφησε αυτή τη σελίδα ανοιχτή μέχρι να τελειώσει.` : "Τελείωσε η ανάγνωση. Όσα θέλουν έλεγχο τα ανοίγεις ένα-ένα."}</p>
+        {error && <div className="alert e mb">{error}</div>}
+        <div className="pbar mb"><div style={{ width: (items.length ? finished / items.length * 100 : 0) + "%" }} /></div>
+        <div className="kpis k3">
+          <div className="kpi"><div className="l">Αποθηκεύτηκαν</div><div className="v" style={{ color: "var(--down)" }}>{c("saved")}</div><div className="s">{nAlerts ? `${nAlerts} αλλαγές τιμών` : "χωρίς αλλαγές τιμών"}</div></div>
+          <div className={"kpi" + (c("review") ? " alert-k" : "")}><div className="l">Θέλουν έλεγχο</div><div className="v">{c("review")}</div><div className="s">πάτα «Έλεγχος»</div></div>
+          <div className="kpi"><div className="l">Απέτυχαν</div><div className="v">{c("error")}</div><div className="s">{c("error") ? "πάτα «Ξανά»" : "—"}</div></div>
+        </div>
+        <div className="card" style={{ padding: 0 }}>
+          {items.map(x => (
+            <div className="bitem" key={x.id}>
+              <div className="bth">{x.file.url ? <img src={x.file.url} alt="" /> : <span>PDF</span>}</div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="row" style={{ gap: 8 }}><span className={"badge " + label[x.status][0]}>{label[x.status][1]}</span><span className="sm mut ell">{x.file.name}</span></div>
+                {x.status === "saved" && x.inv && <div className="sm" style={{ marginTop: 4 }}><b>{(data.suppliers.find(s => s.id === x.inv.supplierId) || {}).name || ""}</b> · {fmtDate(x.inv.date)} · {fmtEur(x.inv.total)}{(x.alerts || []).length ? <span className="badge b-warn" style={{ marginLeft: 6 }}>{x.alerts.length} αλλαγές τιμών</span> : null}</div>}
+                {x.status === "review" && <div className="sm" style={{ marginTop: 4, color: "var(--up)" }}>{x.draft && x.draft.supplier.name ? <b style={{ color: "var(--ink)" }}>{x.draft.supplier.name}: </b> : null}{x.reasons.join(", ")}</div>}
+                {x.status === "error" && <div className="sm" style={{ marginTop: 4, color: "var(--up)" }}>{x.error}</div>}
+              </div>
+              <div className="row nw" style={{ gap: 6 }}>
+                {x.status === "review" && <><button className="btn sm p" onClick={() => reviewItem(x)}>Έλεγχος</button><button className="btn sm" onClick={() => upd(x.id, { status: "skip" })}>Παράλειψη</button></>}
+                {x.status === "error" && <button className="btn sm" onClick={() => retryItem(x.id)}>Ξανά</button>}
+                {x.status === "saved" && x.inv && <button className="btn sm" onClick={() => goInvoice(x.inv.id)}>Προβολή</button>}
+              </div>
+            </div>
+          ))}
+        </div>
+        {!running && (
+          <div className="row mt">
+            <button className="btn" onClick={reset}>Νέα σάρωση</button>
+            <span className="sp" />
+            {nAlerts > 0 && <button className="btn p" onClick={goAlerts}>Δες τις αλλαγές τιμών</button>}
+          </div>
+        )}
+      </>
+    );
+  }
 
   if (phase === "done" && doneInfo) return (
     <div className="grid" style={{ maxWidth: 640 }}>
@@ -725,6 +859,11 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
             ))}
           </div>
         )}
+      </div>
+      <div className="batch-cta" onClick={() => batchRef.current.click()}>
+        <div><b>Έχεις πολλά τιμολόγια;</b><div className="mut sm">Διάλεξε έως {BATCH_MAX} αρχεία μαζί. Κάθε αρχείο είναι ένα τιμολόγιο. Όσα διαβαστούν σωστά αποθηκεύονται μόνα τους.</div></div>
+        <span className="sp" /><button className="btn" onClick={e => { e.stopPropagation(); batchRef.current.click(); }}><Icon n="up" /> Πολλά τιμολόγια</button>
+        <input ref={batchRef} type="file" accept="image/*,application/pdf" multiple hidden onChange={e => { startBatch([...e.target.files]); e.target.value = ""; }} />
       </div>
       <div className="row mt">
         <button className="btn" onClick={() => { setDraft(emptyDraft()); setPhase("review"); }}>Χειροκίνητη καταχώρηση</button>
@@ -1384,14 +1523,17 @@ function App() {
   function openSupplier(id) { setInvoiceId(null); setProductKeyOpen(null); setPage("suppliers"); setSupplierId(id); window.scrollTo(0, 0); }
 
   async function saveDraft(draft, files, existing) {
+    // Πάντα τα τρέχοντα δεδομένα από τη βάση (σε μαζικό ανέβασμα η σελίδα δεν έχει προλάβει να ανανεωθεί)
+    const [suppliersNow, invoicesNow, stNow] = await Promise.all([dbAll("suppliers"), dbAll("invoices"), dbGet("meta", "settings")]);
+    const S = { ...DEFAULT_SETTINGS, ...settings, ...(stNow || {}) };
     const afm = draft.supplier.afm.replace(/\D/g, "");
-    let sup = (afm && data.suppliers.find(s => s.afm === afm)) || (draft.supplier.name && data.suppliers.find(s => norm(s.name) === norm(draft.supplier.name))) || { id: uid(), createdAt: Date.now(), notes: "" };
+    let sup = (afm && suppliersNow.find(s => s.afm === afm)) || (draft.supplier.name && suppliersNow.find(s => norm(s.name) === norm(draft.supplier.name))) || { id: uid(), createdAt: Date.now(), notes: "" };
     const pick = k => (draft.supplier[k] || "").trim() || sup[k] || "";
     sup = { ...sup, afm: afm || sup.afm || "", name: pick("name") || "Άγνωστος προμηθευτής", doy: pick("doy"), address: pick("address"), phone: pick("phone"), email: pick("email") };
     await dbPut("suppliers", sup);
     const fileIds = [];
     for (const f of files) { const id = uid(); await dbPut("files", { id, blob: f.blob, mimeType: f.mimeType }); fileIds.push(id); }
-    const knownCats = settings.categories || [];
+    const knownCats = S.categories || [];
     const lines = draft.lines.filter(l => (l.description || "").trim() || (l.code || "").trim()).map(l => ({
       code: (l.code || "").trim(), description: (l.description || "").trim(), quantity: parseNum(l.quantity), unit: (l.unit || "").trim(),
       unitPrice: parseNum(l.unitPrice), discountPct: parseNum(l.discountPct), net: parseNum(l.net), vatPct: parseNum(l.vatPct),
@@ -1406,9 +1548,9 @@ function App() {
       net, vat, total, paymentMethod: draft.invoice.paymentMethod.trim(), dueDate: draft.invoice.dueDate || "", lines, buyerName: ((draft.buyer || {}).name || "").trim(), buyerAfm: (draft.buyer || {}).afm || "", fileIds: existing ? existing.fileIds || [] : fileIds, notes: draft.notes || "", createdAt: existing ? existing.createdAt : Date.now(),
     };
     await dbPut("invoices", inv);
-    if (newCats.length) await dbPut("meta", { ...settings, id: "settings", categories: [...knownCats, ...newCats] });
+    if (newCats.length) await dbPut("meta", { ...S, id: "settings", categories: [...knownCats, ...newCats] });
     await reload();
-    const newAlerts = buildAlerts(buildProducts([...data.invoices.filter(i => i.id !== inv.id), inv], settings.productCats || {}), Number(settings.threshold) || 0).filter(a => a.invoiceId === inv.id);
+    const newAlerts = buildAlerts(buildProducts([...invoicesNow.filter(i => i.id !== inv.id), inv], S.productCats || {}), Number(S.threshold) || 0).filter(a => a.invoiceId === inv.id);
     return { inv, alerts: newAlerts };
   }
 

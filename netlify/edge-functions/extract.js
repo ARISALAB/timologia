@@ -7,12 +7,19 @@ const S = (type) => ({ type, nullable: true });
 
 const clean = (s, n = 60) => String(s || "").replace(/[\r\n\t]+/g, " ").trim().slice(0, n);
 
+// Λέξεις από πεδία/κεφαλίδες τιμολογίου ή λογιστικοί όροι: ΠΟΤΕ κατηγορία προϊόντος.
+const strip = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const BAD_CAT = /^(φορολογικ|εδρα|δ\.?ο\.?υ|α\.?φ\.?μ|διευθυνσ|πελατ|αγοραστ|προμηθευτ|εκδοτ|συνολ|φ\.?π\.?α|λειτουργικ|εξοδα|διαφορ|λοιπ|γενικ|τιμολογ|παραστατικ|αποδειξ|πληρωμ|υπολοιπ|σειρα|αριθμ|ημερομην|μαρκ|τηλεφων|email|null|none|-)/;
+const badCat = (c) => !strip(c) || BAD_CAT.test(strip(c));
+
 // Οδηγίες κατηγοριοποίησης: οι κατηγορίες είναι της κάθε επιχείρησης, δεν υπάρχει έτοιμη λίστα.
 function categoryRules(categories, businessType) {
   const list = categories.length ? categories.map((c) => `"${c}"`).join(", ") : "(καμία ακόμα)";
   return `Κατηγορίες ειδών της επιχείρησης${businessType ? ` (είδος επιχείρησης: ${businessType})` : ""}: ${list}.
 - Βάλε κάθε είδος σε μία από τις υπάρχουσες κατηγορίες, γραμμένη ΑΚΡΙΒΩΣ όπως παραπάνω, αν ταιριάζει λογικά.
 - Αν δεν ταιριάζει καμία, δημιούργησε νέα κατηγορία: σύντομη (1–3 λέξεις), στα ελληνικά, γενική και χρήσιμη για αυτό το είδος επιχείρησης (π.χ. για εστιατόριο "Γαλακτοκομικά", για κομμωτήριο "Βαφές μαλλιών").
+- Η κατηγορία περιγράφει το ΙΔΙΟ ΤΟ ΠΡΟΪΟΝ (π.χ. ντομάτες, πατάτες → "Λαχανικά", λεμόνια → "Φρούτα", ελιές → "Τρόφιμα παντοπωλείου"). ΠΟΤΕ λέξεις από την κεφαλίδα ή τα πεδία του παραστατικού ("Φορολογική έδρα", "ΔΟΥ", "Διεύθυνση", "Πελάτης", "Σύνολο" κ.λπ.). Αν κάποια υπάρχουσα κατηγορία δεν περιγράφει είδος προϊόντος, αγνόησέ την.
+- Είδη διαφορετικού τύπου δεν μπαίνουν στην ίδια κατηγορία μόνο επειδή είναι στο ίδιο τιμολόγιο.
 - Η κατηγορία λέει ΤΙ ΕΙΝΑΙ το είδος (π.χ. "Τηλεπικοινωνίες", "Διακόσμηση", "Μεταφορικά & αποστολές", "Γαλακτοκομικά"). ΠΟΤΕ λογιστικές ή γενικές κατηγορίες όπως "Λειτουργικά έξοδα", "Έξοδα", "Διάφορα", "Λοιπά", "Γενικά", ακόμα κι αν υπάρχουν στη λίστα.
 - Προτίμησε λίγες, γενικές κατηγορίες αντί για πολλές μικρές. Μην φτιάχνεις κατηγορία για ένα μόνο προϊόν αν χωράει σε γενικότερη.`;
 }
@@ -157,7 +164,7 @@ async function work(request) {
     return json({ error: "Μη έγκυρο αίτημα." }, 400);
   }
 
-  const categories = (Array.isArray(body.categories) ? body.categories : []).map((c) => clean(c, 40)).filter(Boolean).slice(0, 80);
+  const categories = (Array.isArray(body.categories) ? body.categories : []).map((c) => clean(c, 40)).filter((c) => c && !badCat(c)).slice(0, 80);
   const businessType = clean(body.businessType, 60);
   let parts, schema;
 
@@ -238,6 +245,8 @@ ${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
         const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
         let result;
         try { result = isInvoice ? fixTotals(JSON.parse(text)) : JSON.parse(text); } catch { result = null; }
+        if (result && isInvoice) for (const l of result.lines || []) { if (l && badCat(l.category)) l.category = null; }
+        if (result && !isInvoice) for (const a of result.assignments || []) { if (a && badCat(a.category)) a.category = ""; }
         if (result) {
           const out = { result, model, seconds: secs, tried, usage: data?.usageMetadata || null };
           if (!isInvoice) return json(out);

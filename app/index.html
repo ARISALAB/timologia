@@ -59,7 +59,7 @@ h2{font-size:16px;margin:0 0 14px;font-weight:650;letter-spacing:-.005em}
 
 /* Επιφάνειες: μία ακτίνα για περιέκτες, μικρότερη για πεδία */
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px}
-.grid{display:grid;gap:16px}
+.grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
 .g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
 .split{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
 .stat .l{color:var(--muted);font-size:13px} .stat .v{font-size:24px;font-weight:700;margin-top:4px;letter-spacing:-.02em} .stat .s{font-size:12.5px;color:var(--faint);margin-top:2px}
@@ -105,7 +105,7 @@ input.in:focus,select.in:focus{outline:2px solid var(--brass-soft);border-color:
 .field>span{font-size:12.5px;color:var(--muted);font-weight:500}
 .field small{font-size:12px;color:var(--muted)} .field small.err{color:var(--up)}
 .field input.invalid{border-color:var(--up);background:#FFFBFA}
-.fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.fgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .fgrid .wide{grid-column:span 2}
 
 /* Φίλτρα περιόδου σαν segmented control */
@@ -121,9 +121,9 @@ input.in:focus,select.in:focus{outline:2px solid var(--brass-soft);border-color:
 .thumb{position:relative;width:96px;height:124px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
 .thumb img{width:100%;height:100%;object-fit:cover}
 .thumb button{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:99px;border:0;background:rgba(28,34,48,.75);color:#fff;cursor:pointer;line-height:1}
-.review{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
-.preview{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;display:flex;flex-direction:column;gap:8px}
-.preview img{width:100%;border-radius:var(--r);border:1px solid var(--line)}
+.review{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.preview{padding:0;overflow:hidden}.preview summary{padding:14px 20px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}.preview summary svg{width:18px;height:18px}.preview summary::-webkit-details-marker{display:none}.preview summary:after{content:'Απόκρυψη';margin-left:auto;font-weight:500;font-size:13px;color:var(--mut)}.preview:not([open]) summary:after{content:'Εμφάνιση'}.pages{display:flex;gap:12px;overflow-x:auto;padding:0 20px 20px}.pages iframe{width:100%;height:75vh;border:1px solid var(--line);border-radius:var(--r);background:#fff}
+.preview img{max-height:75vh;max-width:100%;width:auto;border-radius:var(--r);border:1px solid var(--line);flex:0 0 auto}
 .lines input.in{padding:6px 7px;font-size:14px}
 .lines td{padding:5px 4px;border-bottom:1px solid var(--line2)}
 .lines th{padding:6px 4px}
@@ -173,7 +173,7 @@ input.in:focus,select.in:focus{outline:2px solid var(--brass-soft);border-color:
 .share .bg{grid-column:1/-1;height:4px;background:var(--line2);border-radius:4px;overflow:hidden}
 .share .bg i{display:block;height:100%;background:var(--ink-3);border-radius:4px}
 
-@media (max-width:1050px){ .g4,.kpis{grid-template-columns:repeat(2,1fr)} .kpi:nth-child(3){border-left:0} .kpi:nth-child(n+3){border-top:1px solid var(--line2)} .fgrid{grid-template-columns:repeat(2,1fr)} .review,.split{grid-template-columns:1fr} .preview{position:static;max-height:none;flex-direction:row;overflow-x:auto} .preview img{width:auto;height:240px} }
+@media (max-width:1050px){ .g4,.kpis{grid-template-columns:repeat(2,1fr)} .kpi:nth-child(3){border-left:0} .kpi:nth-child(n+3){border-top:1px solid var(--line2)} .fgrid{grid-template-columns:repeat(2,1fr)} .split{grid-template-columns:1fr} .pages iframe{height:60vh} }
 @media (max-width:860px){
   .app{grid-template-columns:1fr;background:none} .side{display:none}
   .main{padding:18px 16px 104px}
@@ -463,7 +463,7 @@ function LinesEditor({ lines, onChange, categories = [] }) {
   const cols = [["code", "Κωδικός", 90], ["description", "Περιγραφή", 230], ["quantity", "Ποσ.", 64], ["unit", "Μον.", 58], ["unitPrice", "Τιμή μον.", 84], ["discountPct", "Έκπτ.%", 60], ["net", "Καθαρή", 84], ["vatPct", "ΦΠΑ%", 54]];
   return (
     <div className="tbl">
-      <table className="lines" style={{ minWidth: 980 }}>
+      <table className="lines" style={{ minWidth: 900 }}>
         <thead><tr>{cols.map(([k, l]) => <th key={k}>{l}</th>)}<th>Κατηγορία</th><th></th></tr></thead>
         <tbody>
           {lines.map(l => (
@@ -487,6 +487,12 @@ function LinesEditor({ lines, onChange, categories = [] }) {
   );
 }
 
+function PdfView({ blob }) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => { if (!blob) return; const u = URL.createObjectURL(blob); setUrl(u); return () => URL.revokeObjectURL(u); }, [blob]);
+  return url ? <iframe src={url} title="PDF" /> : null;
+}
+
 function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, saving, onSave, onCancel, categories, readMeta, editing, ownAfm }) {
   const setS = (k, v) => setDraft(d => ({ ...d, supplier: { ...d.supplier, [k]: v } }));
   const setI = (k, v) => setDraft(d => ({ ...d, invoice: { ...d.invoice, [k]: v } }));
@@ -506,7 +512,7 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
   const blocked = missing.length > 0 || (otherBuyer && !draft.buyerOk);
   return (
     <div className={previews.length ? "review" : ""}>
-      {previews.length > 0 && <div className="preview">{previews.map((p, i) => p.url ? <img key={i} src={p.url} alt="" /> : <div key={i} className="card sm mut">PDF: {p.name}</div>)}</div>}
+      {previews.length > 0 && <details className="card preview" open><summary><Icon n="doc" /> Το τιμολόγιο ({previews.length} {previews.length === 1 ? "σελίδα" : "σελίδες"})</summary><div className="pages">{previews.map((p, i) => p.url ? <img key={i} src={p.url} alt="" /> : <PdfView key={i} blob={p.blob} />)}</div></details>}
       <div className="grid">
         {readMeta && <div className="mut sm">Διαβάστηκε από {readMeta.model}{readMeta.seconds != null ? ` σε ${readMeta.seconds}″` : ""}</div>}
         {missing.length > 0 && <div className="alert e">Δεν διαβάστηκε: <b>{missing.join(", ")}</b>. Συμπλήρωσέ τα από το έγγραφο για να γίνει η αποθήκευση.</div>}

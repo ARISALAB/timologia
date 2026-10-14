@@ -130,6 +130,14 @@ const CLASSIFY_SCHEMA = {
   required: ["assignments"],
 };
 
+// Πόσο πλήρες είναι ένα αποτέλεσμα τιμολογίου (0–4). Κάτω από 3 = μισή ανάγνωση, ξαναδοκιμάζουμε.
+function quality(r) {
+  if (!r || !r.invoice) return 0;
+  const i = r.invoice, n = (v) => typeof v === "number" && isFinite(v) && v !== 0;
+  return (/^\d{4}-\d{2}-\d{2}$/.test(i.date || "") ? 1 : 0) + (n(i.total) ? 1 : 0) + (r.supplier && r.supplier.afm ? 1 : 0)
+    + ((r.lines || []).some((l) => l && l.description && n(l.net_amount)) ? 1 : 0);
+}
+
 const DEFAULT_MODELS = "gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.5-flash";
 
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
@@ -187,6 +195,8 @@ ${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
   const started = Date.now();
   const tried = []; // π.χ. "gemini-3.8-flash: 503" — εμφανίζεται στην εφαρμογή αν αποτύχουν όλα
   let lastStatus = 0, lastMsg = "";
+  let best = null; // καλύτερο (έστω και ελλιπές) αποτέλεσμα μέχρι τώρα
+  const isInvoice = schema === SCHEMA;
 
   for (const model of models) {
     const left = 110000 - (Date.now() - started); // συνολικό όριο 110″
@@ -205,7 +215,7 @@ ${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
       const t0 = Date.now();
       try {
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), Math.min(left - 1000, 60000));
+        const timer = setTimeout(() => ctrl.abort(), Math.max(5000, Math.min(110000 - (Date.now() - started) - 1000, 60000)));
         res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
           {
@@ -226,10 +236,20 @@ ${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
       const secs = Math.round((Date.now() - t0) / 1000);
       if (res.ok) {
         const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
-        try {
-          const result = fixTotals(JSON.parse(text));
-          return json({ result, model, seconds: secs, tried, usage: data?.usageMetadata || null });
-        } catch {
+        let result;
+        try { result = isInvoice ? fixTotals(JSON.parse(text)) : JSON.parse(text); } catch { result = null; }
+        if (result) {
+          const out = { result, model, seconds: secs, tried, usage: data?.usageMetadata || null };
+          if (!isInvoice) return json(out);
+          const q = quality(result);
+          if (q >= 3) return json(out);
+          if (!best || q > best.q) best = { q, out };
+          tried.push(`${model}${thinking ? "" : " (πλήρης)"}: ελλιπές ${q}/4`);
+          // Μισή ανάγνωση: πρώτα ξανά το ίδιο μοντέλο με κανονική σκέψη, μετά το επόμενο μοντέλο.
+          if (thinking && attempt === 0 && 110000 - (Date.now() - started) > 25000) { thinking = false; continue; }
+          break;
+        }
+        {
           lastStatus = 502; lastMsg = "Το Gemini δεν επέστρεψε έγκυρα δεδομένα. Δοκίμασε πιο καθαρή φωτογραφία.";
           tried.push(`${model}: άκυρο JSON`);
           break;
@@ -249,6 +269,7 @@ ${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
     }
   }
 
+  if (best) { best.out.tried = tried; best.out.seconds = Math.round((Date.now() - started) / 1000); return json(best.out); }
   if (lastStatus === 429) return json({ error: "Έφτασες το όριο του δωρεάν Gemini. Δοκίμασε ξανά σε ένα λεπτό.", tried }, 429);
   if (lastStatus === 503 || lastStatus === 500) return json({ error: "Το Gemini είναι προσωρινά υπερφορτωμένο. Δοκίμασε ξανά σε λίγο.", tried }, 503);
   return json({ error: lastMsg || "Αποτυχία ανάγνωσης.", tried }, 502);

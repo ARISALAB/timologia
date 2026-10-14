@@ -73,6 +73,22 @@ h2{font-size:16px;margin:0 0 14px;font-weight:650;letter-spacing:-.005em}
 .kpi .v{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:2px;white-space:nowrap}
 .kpi .s{font-size:12.5px;color:var(--faint);margin-top:2px}
 .kpi.alert-k .v{color:var(--up)}
+.al-hero{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px}
+.al-big{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px 24px}
+.al-big .l{font-size:15px;color:var(--muted);font-weight:600}
+.al-big .v{font-size:40px;font-weight:750;letter-spacing:-.02em;margin-top:4px;white-space:nowrap}
+.al-big.up .v{color:var(--up)} .al-big.down .v{color:var(--down)}
+.al-big .s{font-size:14px;color:var(--faint);margin-top:2px}
+.al-sum{font-size:16.5px;margin:4px 2px 20px} .al-sum .up{color:var(--up)} .al-sum .down{color:var(--down)}
+.al-list{display:grid;gap:10px}
+.al-item{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:var(--r);padding:14px 16px;cursor:pointer;background:var(--card)}
+.al-item.up{border-left-color:var(--up)} .al-item.down{border-left-color:var(--down)} .al-item.new{background:#fffdf5}
+.al-item:hover{box-shadow:0 2px 8px rgba(28,34,48,.08)}
+.al-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .al-top b{font-size:15.5px}
+.al-money{font-weight:700;font-size:17px;white-space:nowrap} .al-item.up .al-money{color:var(--up)} .al-item.down .al-money{color:var(--down)}
+.al-line{margin-top:6px;font-size:14.5px;line-height:1.5}
+.al-tip{margin-top:8px;font-size:13.5px;background:var(--brass-soft);padding:7px 10px;border-radius:6px;display:inline-block}
+@media (max-width:700px){ .al-hero{grid-template-columns:1fr;gap:10px} .al-big{padding:16px 18px} .al-big .v{font-size:32px} }
 
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .sp{flex:1}
@@ -1058,40 +1074,80 @@ function AlertsTable({ list, supById, openProduct }) {
   );
 }
 
-function AlertsPage({ data, supById, openProduct, markAllRead, settings }) {
-  const [only, setOnly] = useState("up");
-  const all = [...data.alerts].sort((a, b) => b.newDate.localeCompare(a.newDate) || b.createdAt - a.createdAt);
-  const list = all.filter(a => only === "all" || (only === "up" ? a.pct > 0 : only === "down" ? a.pct < 0 : !a.read));
+// Μονάδα σε απλά λόγια: "Κιλά" → "το κιλό"
+function unitWord(u) {
+  const k = normKey(u || "");
+  if (!k) return "";
+  if (/^(ΚΙΛ|KG|ΚΓΡ|ΚΓ$)/.test(k)) return "το κιλό";
+  if (/^(ΤΕΜ|ΤΜΧ|PCS|ΤΕΜΑΧ)/.test(k)) return "το τεμάχιο";
+  if (/^(ΛΙΤ|LT|LTR)/.test(k)) return "το λίτρο";
+  if (/^ΚΙΒ/.test(k)) return "το κιβώτιο";
+  if (/^(ΣΥΣΚ|ΠΑΚ)/.test(k)) return "τη συσκευασία";
+  if (/^(ΦΙΑΛ|ΜΠΟΥΚ)/.test(k)) return "το μπουκάλι";
+  return "ανά " + u;
+}
+// Διαφορά τιμής: κάτω από 1 € σε λεπτά ("2 λεπτά"), αλλιώς σε ευρώ
+function fmtDiff(d) { const c = Math.round(Math.abs(d) * 100); return Math.abs(d) < 1 ? (c <= 1 ? "1 λεπτό" : c + " λεπτά") : fmtEur(Math.abs(d)); }
+
+function AlertItem({ a, sup, cheaper, onOpen }) {
+  const up = a.pct > 0, d = a.newPrice - a.oldPrice, money = a.qty ? Math.abs(d * a.qty) : null, uw = unitWord(a.unit);
+  return (
+    <div className={"al-item " + (up ? "up" : "down") + (a.read ? "" : " new")} onClick={onOpen}>
+      <div className="al-top">
+        <b>{a.description}</b>{!a.read && <span className="badge b-warn">Νέα</span>}
+        <span className="sp" />
+        {money != null && <span className="al-money">{up ? "+" : "−"}{fmtEur(money)}</span>}
+      </div>
+      <div className="mut sm">{sup?.name || "—"}</div>
+      <div className="al-line">
+        {up ? "Ακρίβυνε" : "Φθήνυνε"} από <b>{fmtPrice(a.oldPrice)}</b> σε <b>{fmtPrice(a.newPrice)}</b> {uw} ({fmtDiff(d)} {up ? "πιο ακριβό" : "πιο φθηνό"}).
+        {money != null && <> Στην αγορά της {fmtDate(a.newDate)} {up ? "πλήρωσες" : "γλίτωσες"} <b>{fmtEur(money)}</b>{up ? " παραπάνω" : ""}.</>}
+      </div>
+      {cheaper && <div className="al-tip">Το έχεις βρει φθηνότερα: <b>{fmtPrice(cheaper.last.price)}</b> {uw} από {cheaper.supName} ({fmtDate(cheaper.last.date)}).</div>}
+    </div>
+  );
+}
+
+function AlertsPage({ data, products = [], supById, openProduct, markAllRead }) {
+  const all = data.alerts;
+  const ups = all.filter(a => a.pct > 0), downs = all.filter(a => a.pct < 0);
+  const [only, setOnly] = useState(ups.length || !downs.length ? "up" : "down");
+  const money = a => (a.qty ? Math.abs((a.newPrice - a.oldPrice) * a.qty) : 0);
+  const list = (only === "up" ? ups : downs).slice().sort((x, y) => money(y) - money(x) || Math.abs(y.pct) - Math.abs(x.pct));
   const unread = all.filter(a => !a.read).length;
-  const impact = sum(all.filter(a => a.pct > 0 && a.qty), a => (a.newPrice - a.oldPrice) * a.qty);
-  const saved = sum(all.filter(a => a.pct < 0 && a.qty), a => (a.oldPrice - a.newPrice) * a.qty);
-  const net = impact - saved;
-  const summary = l => {
-    const n = l.filter(a => !a.read).length, up = l.filter(a => a.pct > 0);
-    const avg = up.length ? sum(up, a => a.pct) / up.length : null;
-    return <span className="row" style={{ gap: 6 }}>{n > 0 && <span className="badge b-warn">{n} νέες</span>}{avg != null && <span className="badge b-up">μ.ό. +{avg.toLocaleString("el-GR", { maximumFractionDigits: 1 })}%</span>}</span>;
+  const lost = sum(ups, money), saved = sum(downs, money), net = lost - saved;
+  // Ίδιο είδος από άλλον προμηθευτή σε χαμηλότερη τιμή (τελευταία αγορά)
+  const byDesc = useMemo(() => { const m = {}; for (const p of products) (m[descKey(p.description)] ||= []).push(p); return m; }, [products]);
+  const cheaperFor = a => {
+    if (a.pct <= 0) return null;
+    const c = (byDesc[descKey(a.description)] || []).filter(p => p.supplierId !== a.supplierId && p.last && p.last.price < a.newPrice * 0.98).sort((x, y) => x.last.price - y.last.price)[0];
+    return c ? { ...c, supName: supById[c.supplierId]?.name || "άλλον προμηθευτή" } : null;
   };
+  const n = (k, one, many) => k === 1 ? one : `${k} ${many}`;
   return (
     <>
       <div className="row" style={{ alignItems: "flex-start" }}>
-        <div><h1>Ειδοποιήσεις τιμών</h1><p className="sub">Αλλαγές από {settings.threshold}% και πάνω σε σχέση με την προηγούμενη αγορά, ανά κατηγορία.</p></div>
-        <span className="sp" />{unread > 0 && <button className="btn" onClick={markAllRead}>Σήμανση όλων ως αναγνωσμένες</button>}
+        <div><h1>Αλλαγές τιμών</h1><p className="sub">Κάθε φορά που ένας προμηθευτής αλλάζει τιμή, το βλέπεις εδώ.</p></div>
+        <span className="sp" />{unread > 0 && <button className="btn" onClick={markAllRead}>Τα είδα όλα</button>}
       </div>
-      {all.length > 0 && (
-        <div className="kpis">
-          <div className="kpi alert-k"><div className="l">Επιπλέον κόστος από αυξήσεις*</div><div className="v">+{fmtEur(impact)}</div><div className="s">{(n => n === 1 ? "1 αύξηση" : `${n} αυξήσεις`)(all.filter(a => a.pct > 0).length)}</div></div>
-          <div className="kpi"><div className="l">Όφελος από μειώσεις*</div><div className="v" style={{ color: "var(--down)" }}>−{fmtEur(saved)}</div><div className="s">{(n => n === 1 ? "1 μείωση" : `${n} μειώσεις`)(all.filter(a => a.pct < 0).length)}</div></div>
-          <div className={"kpi" + (net > 0 ? " alert-k" : "")}><div className="l">Καθαρή επίπτωση</div><div className="v" style={net <= 0 ? { color: "var(--down)" } : {}}>{net > 0 ? "+" : net < 0 ? "−" : ""}{fmtEur(Math.abs(net))}</div><div className="s">{net > 0 ? "πληρώνεις περισσότερα" : net < 0 ? "πληρώνεις λιγότερα" : "καμία διαφορά"}</div></div>
-          <div className="kpi"><div className="l">Μέση αύξηση</div><div className="v">{all.some(a => a.pct > 0) ? "+" + (sum(all.filter(a => a.pct > 0), a => a.pct) / all.filter(a => a.pct > 0).length).toLocaleString("el-GR", { maximumFractionDigits: 1 }) + "%" : "—"}</div><div className="s">στα είδη που ακρίβυναν</div></div>
-        </div>
+      {!all.length ? <div className="card empty">Καμία αλλαγή τιμής ακόμα. Θα εμφανιστεί εδώ μόλις αγοράσεις ξανά ένα είδος σε άλλη τιμή.</div> : (
+        <>
+          <div className="al-hero">
+            <div className="al-big up"><div className="l">Έχασες από αυξήσεις</div><div className="v">{fmtEur(lost)}</div><div className="s">{n(ups.length, "1 είδος ακρίβυνε", "είδη ακρίβυναν")}</div></div>
+            <div className="al-big down"><div className="l">Κέρδισες από μειώσεις</div><div className="v">{fmtEur(saved)}</div><div className="s">{n(downs.length, "1 είδος φθήνυνε", "είδη φθήνυναν")}</div></div>
+          </div>
+          <p className="al-sum">{net > 0.005 ? <>Συνολικά πλήρωσες <b className="up">{fmtEur(net)} περισσότερα</b> από πριν.</> : net < -0.005 ? <>Συνολικά πλήρωσες <b className="down">{fmtEur(-net)} λιγότερα</b> από πριν.</> : "Συνολικά δεν πλήρωσες ούτε παραπάνω ούτε λιγότερα."}</p>
+          <div className="card grid">
+            <div className="chips">
+              <button className={"chip" + (only === "up" ? " on" : "")} onClick={() => setOnly("up")}>Ακρίβυναν ({ups.length})</button>
+              <button className={"chip" + (only === "down" ? " on" : "")} onClick={() => setOnly("down")}>Φθήνυναν ({downs.length})</button>
+            </div>
+            {!list.length ? <div className="empty">{only === "up" ? "Τίποτα δεν ακρίβυνε. Καλά νέα." : "Τίποτα δεν φθήνυνε ακόμα."}</div>
+              : <div className="al-list">{list.map(a => <AlertItem key={a.id} a={a} sup={supById[a.supplierId]} cheaper={cheaperFor(a)} onOpen={() => openProduct(a.productKey)} />)}</div>}
+            <div className="mut sm">Τιμές χωρίς ΦΠΑ. Τα ποσά βγαίνουν από την ποσότητα που αγόρασες στη νέα τιμή.</div>
+          </div>
+        </>
       )}
-      <div className="card grid">
-        {all.length > 0 && <div className="chips">{[["up", "Αυξήσεις"], ["down", "Μειώσεις"], ["new", `Νέες (${unread})`], ["all", "Όλες"]].map(([k, l]) => <button key={k} className={"chip" + (only === k ? " on" : "")} onClick={() => setOnly(k)}>{l}</button>)}</div>}
-        {!all.length ? <div className="empty">Καμία αλλαγή τιμής ακόμα. Οι ειδοποιήσεις εμφανίζονται όταν ένα είδος αγοραστεί ξανά σε διαφορετική τιμή.</div>
-          : !list.length ? <div className="empty">Καμία ειδοποίηση με αυτό το φίλτρο.</div>
-          : <CatGroups items={list} summary={summary}>{l => <AlertsTable list={l} supById={supById} openProduct={openProduct} />}</CatGroups>}
-        {all.length > 0 && <div className="mut sm">* Διαφορά κόστους για την ποσότητα του τιμολογίου όπου άλλαξε η τιμή.</div>}
-      </div>
     </>
   );
 }
@@ -1292,7 +1348,7 @@ function SetupScreen({ settings, onSave }) {
 }
 
 const DEFAULT_SETTINGS = { id: "settings", businessName: "", businessType: "", ownAfm: "", threshold: 1, categories: [], productCats: {}, readAlerts: [] };
-const NAV = [["home", "Αρχική", "home"], ["invoices", "Τιμολόγια", "doc"], ["suppliers", "Προμηθευτές", "truck"], ["products", "Είδη & τιμές", "box"], ["alerts", "Ειδοποιήσεις", "bell"], ["settings", "Ρυθμίσεις", "gear"]];
+const NAV = [["home", "Αρχική", "home"], ["invoices", "Τιμολόγια", "doc"], ["suppliers", "Προμηθευτές", "truck"], ["products", "Είδη & τιμές", "box"], ["alerts", "Αλλαγές τιμών", "bell"], ["settings", "Ρυθμίσεις", "gear"]];
 
 function App() {
   const [data, setData] = useState({ suppliers: [], invoices: [], alerts: [] });
@@ -1414,7 +1470,7 @@ function App() {
     ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} />
     : <SuppliersPage data={vdata} openSupplier={openSupplier} />;
   else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} autoClassify={autoClassify} />;
-  else if (page === "alerts") content = <AlertsPage data={vdata} supById={supById} settings={settings} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
+  else if (page === "alerts") content = <AlertsPage data={vdata} products={products} supById={supById} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
   else if (page === "settings") content = <SettingsPage products={products} renameCategory={renameCategory} settings={settings} saveSettings={saveSettings} data={vdata} reload={reload} toast={setToastMsg} />;
   else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} openInvoice={setInvoiceId} settings={settings} />;
 
@@ -1422,7 +1478,7 @@ function App() {
     <>
       <div className="mtop">
         <div className="brand"><b>Price<em>Armor</em></b><span>AR Akron</span></div><span className="sp" />
-        <button className="icbtn" onClick={() => go("alerts")} aria-label="Ειδοποιήσεις"><Icon n="bell" />{unread > 0 && <span className="dot" />}</button>
+        <button className="icbtn" onClick={() => go("alerts")} aria-label="Αλλαγές τιμών"><Icon n="bell" />{unread > 0 && <span className="dot" />}</button>
         <button className="icbtn" onClick={() => go("settings")} aria-label="Ρυθμίσεις"><Icon n="gear" /></button>
       </div>
       <div className="app">

@@ -514,7 +514,7 @@ function ReviewForm({ draft, setDraft, previews, duplicate, matchedSupplier, sav
     <div className={previews.length ? "review" : ""}>
       {previews.length > 0 && <details className="card preview" open><summary><Icon n="doc" /> Το τιμολόγιο ({previews.length} {previews.length === 1 ? "σελίδα" : "σελίδες"})</summary><div className="pages">{previews.map((p, i) => p.url ? <img key={i} src={p.url} alt="" /> : <PdfView key={i} blob={p.blob} />)}</div></details>}
       <div className="grid">
-        {readMeta && <div className="mut sm">Διαβάστηκε από {readMeta.model}{readMeta.seconds != null ? ` σε ${readMeta.seconds}″` : ""}</div>}
+        {readMeta && <div className="mut sm">Διαβάστηκε από {readMeta.model}{readMeta.seconds != null ? ` σε ${readMeta.seconds}″` : ""}{readMeta.tried && readMeta.tried.length ? ` · προσπάθειες: ${readMeta.tried.join(", ")}` : ""}</div>}
         {missing.length > 0 && <div className="alert e">Δεν διαβάστηκε: <b>{missing.join(", ")}</b>. Συμπλήρωσέ τα από το έγγραφο για να γίνει η αποθήκευση.</div>}
         {otherBuyer && (
           <div className="alert e" style={{ flexDirection: "column", gap: 8 }}>
@@ -626,7 +626,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
       if (!ct.includes("application/json")) throw new Error("Η ανάγνωση δουλεύει μόνο όταν η εφαρμογή τρέχει στο Netlify (ή με netlify dev).");
       const j = await res.json();
       if (!res.ok || j.error) throw new Error((j.error || "Σφάλμα ανάγνωσης") + (j.tried && j.tried.length ? ` [${j.tried.join(", ")}]` : ""));
-      setDraft(resultToDraft(j.result)); setReadMeta({ model: j.model, seconds: j.seconds }); setPhase("review");
+      setDraft(resultToDraft(j.result)); setReadMeta({ model: j.model, seconds: j.seconds, tried: j.tried || [] }); setPhase("review");
     } catch (e) { setError(e.message || String(e)); setPhase("pick"); }
   }
 

@@ -200,7 +200,7 @@ ${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
 
   for (const model of models) {
     const left = 110000 - (Date.now() - started); // συνολικό όριο 110″
-    if (left < 10000) { tried.push(`${model}: δεν έμεινε χρόνος`); break; }
+    if (left < 10000 || (best && Date.now() - started > 35000)) { tried.push(`${model}: δεν έμεινε χρόνος`); break; }
 
     let thinking = true;
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -246,7 +246,7 @@ ${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
           if (!best || q > best.q) best = { q, out };
           tried.push(`${model}${thinking ? "" : " (πλήρης)"}: ελλιπές ${q}/4`);
           // Μισή ανάγνωση: πρώτα ξανά το ίδιο μοντέλο με κανονική σκέψη, μετά το επόμενο μοντέλο.
-          if (thinking && attempt === 0 && 110000 - (Date.now() - started) > 25000) { thinking = false; continue; }
+          if (thinking && attempt === 0 && Date.now() - started < 35000) { thinking = false; continue; }
           break;
         }
         {

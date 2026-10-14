@@ -87,6 +87,8 @@ h2{font-size:16px;margin:0 0 14px;font-weight:650;letter-spacing:-.005em}
 .al-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .al-top b{font-size:15.5px}
 .al-money{font-weight:700;font-size:17px;white-space:nowrap} .al-item.up .al-money{color:var(--up)} .al-item.down .al-money{color:var(--down)}
 .al-line{margin-top:6px;font-size:14.5px;line-height:1.5}
+.al-span{font-size:14px;color:var(--muted);font-weight:600;margin:0 2px 10px}
+.al-sup{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line2)} .al-sup:first-of-type{border-top:0}
 .al-tip{margin-top:8px;font-size:13.5px;background:var(--brass-soft);padding:7px 10px;border-radius:6px;display:inline-block}
 @media (max-width:700px){ .al-hero{grid-template-columns:1fr;gap:10px} .al-big{padding:16px 18px} .al-big .v{font-size:32px} }
 
@@ -1228,62 +1230,106 @@ function unitWord(u) {
 // Διαφορά τιμής: κάτω από 1 € σε λεπτά ("2 λεπτά"), αλλιώς σε ευρώ
 function fmtDiff(d) { const c = Math.round(Math.abs(d) * 100); return Math.abs(d) < 1 ? (c <= 1 ? "1 λεπτό" : c + " λεπτά") : fmtEur(Math.abs(d)); }
 
-function AlertItem({ a, sup, cheaper, onOpen }) {
-  const up = a.pct > 0, d = a.newPrice - a.oldPrice, money = a.qty ? Math.abs(d * a.qty) : null, uw = unitWord(a.unit);
+// Αλλαγές τιμών ανά είδος σε μια περίοδο. Βάση = η τιμή στην αρχή της περιόδου· κάθε επόμενη αγορά μετράει (τιμή − βάση) × ποσότητα.
+function periodChanges(products, r, threshold) {
+  const out = [];
+  for (const p of products) {
+    const h = p.history, inP = h.filter(x => inRange(x.date, r));
+    if (!inP.length) continue;
+    const before = h.filter(x => x.date < r.from).pop();
+    const base = before ? before.price : inP[0].price;
+    const buys = before ? inP : inP.slice(1);
+    if (!buys.length) continue;
+    if (!buys.some(x => Math.abs(pctChange(base, x.price) || 0) >= Math.max(threshold, 0.01))) continue;
+    const extra = sum(buys, x => (x.price - base) * (x.qty > 0 ? x.qty : 1));
+    const last = inP[inP.length - 1];
+    const dir = Math.abs(extra) >= 0.005 ? Math.sign(extra) : Math.sign(last.price - base);
+    if (!dir) continue;
+    out.push({ key: p.key, supplierId: p.supplierId, description: p.description, unit: p.unit, base, baseDate: before ? before.date : inP[0].date, now: last.price, nowDate: last.date, max: Math.max(...buys.map(x => x.price)), min: Math.min(...buys.map(x => x.price)), extra, dir, buys: buys.length });
+  }
+  return out;
+}
+
+function ChangeItem({ c, sup, unread, cheaper, onOpen }) {
+  const up = c.dir > 0, uw = unitWord(c.unit), back = Math.abs(c.now - c.base) < 0.005, m = Math.abs(c.extra);
   return (
-    <div className={"al-item " + (up ? "up" : "down") + (a.read ? "" : " new")} onClick={onOpen}>
+    <div className={"al-item " + (up ? "up" : "down") + (unread ? " new" : "")} onClick={onOpen}>
       <div className="al-top">
-        <b>{a.description}</b>{!a.read && <span className="badge b-warn">Νέα</span>}
+        <b>{c.description}</b>{unread && <span className="badge b-warn">Νέα</span>}
         <span className="sp" />
-        {money != null && <span className="al-money">{up ? "+" : "−"}{fmtEur(money)}</span>}
+        {m >= 0.005 && <span className="al-money">{up ? "+" : "−"}{fmtEur(m)}</span>}
       </div>
       <div className="mut sm">{sup?.name || "—"}</div>
       <div className="al-line">
-        {up ? "Ακρίβυνε" : "Φθήνυνε"} από <b>{fmtPrice(a.oldPrice)}</b> σε <b>{fmtPrice(a.newPrice)}</b> {uw} ({fmtDiff(d)} {up ? "πιο ακριβό" : "πιο φθηνό"}).
-        {money != null && <> Στην αγορά της {fmtDate(a.newDate)} {up ? "πλήρωσες" : "γλίτωσες"} <b>{fmtEur(money)}</b>{up ? " παραπάνω" : ""}.</>}
+        {back
+          ? <>Η τιμή {up ? "ανέβηκε προσωρινά έως" : "έπεσε προσωρινά έως"} <b>{fmtPrice(up ? c.max : c.min)}</b> {uw} και γύρισε στα <b>{fmtPrice(c.base)}</b>.</>
+          : <>{up ? "Ακρίβυνε" : "Φθήνυνε"} από <b>{fmtPrice(c.base)}</b> σε <b>{fmtPrice(c.now)}</b> {uw} ({fmtDiff(c.now - c.base)} {up ? "πιο ακριβό" : "πιο φθηνό"}).</>}
+        {m >= 0.005 && <> Σε αυτό το διάστημα {up ? "πλήρωσες" : "γλίτωσες"} <b>{fmtEur(m)}</b>{up ? " παραπάνω" : ""} {c.buys === 1 ? "σε 1 αγορά" : `σε ${c.buys} αγορές`}.</>}
       </div>
       {cheaper && <div className="al-tip">Το έχεις βρει φθηνότερα: <b>{fmtPrice(cheaper.last.price)}</b> {uw} από {cheaper.supName} ({fmtDate(cheaper.last.date)}).</div>}
     </div>
   );
 }
 
-function AlertsPage({ data, products = [], supById, openProduct, markAllRead }) {
-  const all = data.alerts;
-  const ups = all.filter(a => a.pct > 0), downs = all.filter(a => a.pct < 0);
-  const [only, setOnly] = useState(ups.length || !downs.length ? "up" : "down");
-  const money = a => (a.qty ? Math.abs((a.newPrice - a.oldPrice) * a.qty) : 0);
-  const list = (only === "up" ? ups : downs).slice().sort((x, y) => money(y) - money(x) || Math.abs(y.pct) - Math.abs(x.pct));
-  const unread = all.filter(a => !a.read).length;
-  const lost = sum(ups, money), saved = sum(downs, money), net = lost - saved;
-  // Ίδιο είδος από άλλον προμηθευτή σε χαμηλότερη τιμή (τελευταία αγορά)
+function AlertsPage({ data, products = [], supById, openProduct, markAllRead, settings = {} }) {
+  const [period, setPeriod] = useState({ preset: "all" });
+  const r = periodRange(period);
+  const changes = useMemo(() => periodChanges(products, r, Number(settings.threshold) || 0), [products, r.from, r.to, settings.threshold]);
+  const ups = changes.filter(c => c.dir > 0), downs = changes.filter(c => c.dir < 0);
+  const [only, setOnly] = useState("up");
+  const tab = only === "up" && !ups.length && downs.length ? "down" : only;
+  const list = (tab === "up" ? ups : downs).slice().sort((x, y) => Math.abs(y.extra) - Math.abs(x.extra));
+  const lost = sum(ups, c => Math.max(c.extra, 0)), saved = sum(downs, c => Math.max(-c.extra, 0)), net = lost - saved;
+  const unreadKeys = new Set(data.alerts.filter(a => !a.read && inRange(a.newDate, r)).map(a => a.productKey));
+  const unread = data.alerts.filter(a => !a.read).length;
+  // Διάστημα που καλύπτουν πραγματικά τα δεδομένα της περιόδου
+  const dates = data.invoices.map(i => i.date).filter(d => d && inRange(d, r)).sort();
+  const span = dates.length ? (dates[0] === dates[dates.length - 1] ? `Στις ${fmtDate(dates[0])}` : `Από ${fmtDate(dates[0])} έως ${fmtDate(dates[dates.length - 1])}`) : "";
+  // Ίδιο είδος από άλλον προμηθευτή σε χαμηλότερη τιμή
   const byDesc = useMemo(() => { const m = {}; for (const p of products) (m[descKey(p.description)] ||= []).push(p); return m; }, [products]);
-  const cheaperFor = a => {
-    if (a.pct <= 0) return null;
-    const c = (byDesc[descKey(a.description)] || []).filter(p => p.supplierId !== a.supplierId && p.last && p.last.price < a.newPrice * 0.98).sort((x, y) => x.last.price - y.last.price)[0];
-    return c ? { ...c, supName: supById[c.supplierId]?.name || "άλλον προμηθευτή" } : null;
+  const cheaperFor = c => {
+    if (c.dir <= 0) return null;
+    const x = (byDesc[descKey(c.description)] || []).filter(p => p.supplierId !== c.supplierId && p.last && p.last.price < c.now * 0.98).sort((a, b) => a.last.price - b.last.price)[0];
+    return x ? { ...x, supName: supById[x.supplierId]?.name || "άλλον προμηθευτή" } : null;
   };
+  // Ποιος προμηθευτής σε ακρίβυνε περισσότερο
+  const bySup = Object.values(ups.reduce((m, c) => { const e = m[c.supplierId] ||= { id: c.supplierId, lost: 0, n: 0 }; e.lost += Math.max(c.extra, 0); e.n++; return m; }, {})).filter(e => e.lost >= 0.01).sort((a, b) => b.lost - a.lost).slice(0, 5);
   const n = (k, one, many) => k === 1 ? one : `${k} ${many}`;
   return (
     <>
       <div className="row" style={{ alignItems: "flex-start" }}>
-        <div><h1>Αλλαγές τιμών</h1><p className="sub">Κάθε φορά που ένας προμηθευτής αλλάζει τιμή, το βλέπεις εδώ.</p></div>
+        <div><h1>Αλλαγές τιμών</h1><p className="sub">Πόσα παραπάνω ή λιγότερα πλήρωσες επειδή άλλαξαν οι τιμές των προμηθευτών.</p></div>
         <span className="sp" />{unread > 0 && <button className="btn" onClick={markAllRead}>Τα είδα όλα</button>}
       </div>
-      {!all.length ? <div className="card empty">Καμία αλλαγή τιμής ακόμα. Θα εμφανιστεί εδώ μόλις αγοράσεις ξανά ένα είδος σε άλλη τιμή.</div> : (
+      <div className="mb"><PeriodFilter value={period} onChange={setPeriod} /></div>
+      {!changes.length ? <div className="card empty">{products.some(p => p.history.length > 1) ? "Καμία αλλαγή τιμής σε αυτό το διάστημα. Δοκίμασε μεγαλύτερη περίοδο." : "Καμία αλλαγή τιμής ακόμα. Θα εμφανιστεί εδώ μόλις αγοράσεις ξανά ένα είδος σε άλλη τιμή."}</div> : (
         <>
+          <div className="al-span">{span}</div>
           <div className="al-hero">
             <div className="al-big up"><div className="l">Έχασες από αυξήσεις</div><div className="v">{fmtEur(lost)}</div><div className="s">{n(ups.length, "1 είδος ακρίβυνε", "είδη ακρίβυναν")}</div></div>
             <div className="al-big down"><div className="l">Κέρδισες από μειώσεις</div><div className="v">{fmtEur(saved)}</div><div className="s">{n(downs.length, "1 είδος φθήνυνε", "είδη φθήνυναν")}</div></div>
           </div>
-          <p className="al-sum">{net > 0.005 ? <>Συνολικά πλήρωσες <b className="up">{fmtEur(net)} περισσότερα</b> από πριν.</> : net < -0.005 ? <>Συνολικά πλήρωσες <b className="down">{fmtEur(-net)} λιγότερα</b> από πριν.</> : "Συνολικά δεν πλήρωσες ούτε παραπάνω ούτε λιγότερα."}</p>
+          <p className="al-sum">{net > 0.005 ? <>Συνολικά πλήρωσες <b className="up">{fmtEur(net)} περισσότερα</b> από ό,τι με τις τιμές της αρχής της περιόδου.</> : net < -0.005 ? <>Συνολικά πλήρωσες <b className="down">{fmtEur(-net)} λιγότερα</b> από ό,τι με τις τιμές της αρχής της περιόδου.</> : "Συνολικά δεν πλήρωσες ούτε παραπάνω ούτε λιγότερα."}</p>
+          {bySup.length > 0 && (
+            <div className="card mb">
+              <h2 style={{ marginTop: 0 }}>Ποιος προμηθευτής σε ακρίβυνε περισσότερο</h2>
+              {bySup.map(e => (
+                <div className="al-sup" key={e.id}>
+                  <span><b>{supById[e.id]?.name || "—"}</b> <span className="mut sm">· {n(e.n, "1 είδος", "είδη")} πιο ακριβά</span></span>
+                  <span className="sp" /><b style={{ color: "var(--up)" }}>+{fmtEur(e.lost)}</b>
+                </div>
+              ))}
+              <div className="mut sm" style={{ marginTop: 8 }}>Καλή αφετηρία για κουβέντα με τον προμηθευτή ή για σύγκριση με άλλον.</div>
+            </div>
+          )}
           <div className="card grid">
             <div className="chips">
-              <button className={"chip" + (only === "up" ? " on" : "")} onClick={() => setOnly("up")}>Ακρίβυναν ({ups.length})</button>
-              <button className={"chip" + (only === "down" ? " on" : "")} onClick={() => setOnly("down")}>Φθήνυναν ({downs.length})</button>
+              <button className={"chip" + (tab === "up" ? " on" : "")} onClick={() => setOnly("up")}>Ακρίβυναν ({ups.length})</button>
+              <button className={"chip" + (tab === "down" ? " on" : "")} onClick={() => setOnly("down")}>Φθήνυναν ({downs.length})</button>
             </div>
-            {!list.length ? <div className="empty">{only === "up" ? "Τίποτα δεν ακρίβυνε. Καλά νέα." : "Τίποτα δεν φθήνυνε ακόμα."}</div>
-              : <div className="al-list">{list.map(a => <AlertItem key={a.id} a={a} sup={supById[a.supplierId]} cheaper={cheaperFor(a)} onOpen={() => openProduct(a.productKey)} />)}</div>}
-            <div className="mut sm">Τιμές χωρίς ΦΠΑ. Τα ποσά βγαίνουν από την ποσότητα που αγόρασες στη νέα τιμή.</div>
+            {!list.length ? <div className="empty">{tab === "up" ? "Τίποτα δεν ακρίβυνε σε αυτό το διάστημα." : "Τίποτα δεν φθήνυνε σε αυτό το διάστημα."}</div>
+              : <div className="al-list">{list.map(c => <ChangeItem key={c.key} c={c} sup={supById[c.supplierId]} unread={unreadKeys.has(c.key)} cheaper={cheaperFor(c)} onOpen={() => openProduct(c.key)} />)}</div>}
+            <div className="mut sm">Σε κάθε αγορά του διαστήματος συγκρίνουμε την τιμή με αυτή που είχε το είδος στην αρχή του. Τιμές χωρίς ΦΠΑ.</div>
           </div>
         </>
       )}
@@ -1612,7 +1658,7 @@ function App() {
     ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} />
     : <SuppliersPage data={vdata} openSupplier={openSupplier} />;
   else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} autoClassify={autoClassify} />;
-  else if (page === "alerts") content = <AlertsPage data={vdata} products={products} supById={supById} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
+  else if (page === "alerts") content = <AlertsPage data={vdata} products={products} settings={settings} supById={supById} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
   else if (page === "settings") content = <SettingsPage products={products} renameCategory={renameCategory} settings={settings} saveSettings={saveSettings} data={vdata} reload={reload} toast={setToastMsg} />;
   else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} openInvoice={setInvoiceId} settings={settings} />;
 

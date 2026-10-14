@@ -87,6 +87,13 @@ h2{font-size:16px;margin:0 0 14px;font-weight:650;letter-spacing:-.005em}
 .al-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .al-top b{font-size:15.5px}
 .al-money{font-weight:700;font-size:17px;white-space:nowrap} .al-item.up .al-money{color:var(--up)} .al-item.down .al-money{color:var(--down)}
 .al-line{margin-top:6px;font-size:14.5px;line-height:1.5}
+.al-path{margin-top:6px;font-size:13.5px} .al-path i{font-style:normal;color:var(--faint)}
+.al-calc{margin-top:8px;font-size:13.5px} .al-calc summary{cursor:pointer;color:var(--brass-d);font-weight:600;width:max-content}
+.al-rows{margin-top:6px;background:var(--paper);border-radius:6px;padding:10px 12px;display:grid;gap:4px}
+.al-row{display:grid;grid-template-columns:90px 1fr auto;gap:10px;align-items:baseline} .al-row.tot{border-top:1px solid var(--line);padding-top:6px;margin-top:2px;font-weight:600}
+.al-rows .up,.story .up{color:var(--up)} .al-rows .down,.story .down{color:var(--down)}
+.story{background:var(--paper);border-radius:var(--r);padding:14px 18px} .story h2{margin:0 0 6px;font-size:16px} .story ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14.5px;line-height:1.5}
+@media (max-width:700px){ .al-row{grid-template-columns:1fr auto} .al-row>span:first-child{grid-column:1/-1;color:var(--muted)} .al-row.tot>span:first-child{display:none} }
 .al-span{font-size:14px;color:var(--muted);font-weight:600;margin:0 2px 10px}
 .al-sup{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line2)} .al-sup:first-of-type{border-top:0}
 .al-tip{margin-top:8px;font-size:13.5px;background:var(--brass-soft);padding:7px 10px;border-radius:6px;display:inline-block}
@@ -262,7 +269,10 @@ const EUR = new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR" 
 const N4 = new Intl.NumberFormat("el-GR", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 const N2 = new Intl.NumberFormat("el-GR", { maximumFractionDigits: 3 });
 const fmtEur = v => (v == null || isNaN(v)) ? "—" : EUR.format(v);
-const fmtPrice = v => (v == null || isNaN(v)) ? "—" : N4.format(v) + " €";
+// Τιμή μονάδας: 2 δεκαδικά (0,69 €). Μόνο για πολύ μικρές τιμές 3 (0,045 €).
+const P2 = new Intl.NumberFormat("el-GR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), P3 = new Intl.NumberFormat("el-GR", { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+const fmtPrice = v => (v == null || isNaN(v)) ? "—" : (Math.abs(v) < 0.1 && v !== 0 ? P3 : P2).format(v) + " €";
+const fmtShortDate = iso => { const d = fmtDate(iso); return /^\d\d\/\d\d\/\d{4}$/.test(d) ? d.slice(0, 6) + d.slice(8) : d; };
 const fmtQty = v => (v == null || isNaN(v)) ? "" : N2.format(v);
 const fmtDate = iso => { if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso || "—"; const [y, m, d] = iso.slice(0, 10).split("-"); return `${d}/${m}/${y}`; };
 const toISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -1128,6 +1138,30 @@ const prodSummary = list => {
 /* =========================================================
    Προϊόντα
    ========================================================= */
+// Η ιστορία της τιμής σε απλές προτάσεις
+function PriceStory({ product }) {
+  const h = product.history, uw = unitWord(product.unit), steps = priceSteps(h);
+  if (h.length < 2) return null;
+  const first = h[0], last = h[h.length - 1];
+  const extra = sum(h.slice(1), x => (x.price - first.price) * (x.qty > 0 ? x.qty : 1));
+  const tot = pctChange(first.price, last.price) || 0;
+  const pctS = v => Math.abs(v).toLocaleString("el-GR", { maximumFractionDigits: 1 }) + "%";
+  return (
+    <div className="story mb">
+      <h2>Η ιστορία της τιμής</h2>
+      <ul>
+        <li>Την πρώτη φορά, στις {fmtDate(first.date)}, το πήρες <b>{fmtPrice(first.price)}</b> {uw}.</li>
+        {steps.slice(1).map((x, i) => { const prev = steps[i], d = x.price - prev.price, up = d > 0; return (
+          <li key={i}>Στις {fmtDate(x.date)} {up ? "ανέβηκε" : "έπεσε"} στα <b>{fmtPrice(x.price)}</b> <span className={up ? "up" : "down"}>({up ? "+" : "−"}{fmtPrice(Math.abs(d))}, {up ? "+" : "−"}{pctS(pctChange(prev.price, x.price))})</span>.</li>
+        ); })}
+        {steps.length === 1 && <li>Σε όλες τις αγορές ({h.length}) η τιμή έμεινε ίδια.</li>}
+        {steps.length > 1 && <li>Στην τελευταία αγορά ({fmtDate(last.date)}) ήταν {Math.abs(tot) < 0.05 ? <b>στην ίδια τιμή με την πρώτη φορά</b> : <><b className={tot > 0 ? "up" : "down"}>{pctS(tot)} {tot > 0 ? "ακριβότερο" : "φθηνότερο"}</b> από την πρώτη φορά</>}.</li>}
+        {Math.abs(extra) >= 0.01 && <li>Σε {h.length - 1 === 1 ? "1 αγορά" : `${h.length - 1} αγορές`} μετά την πρώτη, {extra > 0 ? "πλήρωσες" : "γλίτωσες"} συνολικά <b className={extra > 0 ? "up" : "down"}>{fmtEur(Math.abs(extra))}</b>{extra > 0 ? " παραπάνω" : ""} σε σχέση με την αρχική τιμή.</li>}
+      </ul>
+    </div>
+  );
+}
+
 function ProductModal({ product, supplier, onClose, openInvoice, setCategory, categories }) {
   const h = product.history;
   return (
@@ -1143,6 +1177,7 @@ function ProductModal({ product, supplier, onClose, openInvoice, setCategory, ca
         <div className="stat"><div className="l">Χαμηλότερη</div><div className="v">{fmtPrice(product.min)}</div></div>
         <div className="stat"><div className="l">Υψηλότερη</div><div className="v">{fmtPrice(product.max)}</div></div>
       </div>
+      <PriceStory product={product} />
       <div className="card mb" style={{ padding: 10 }}><Sparkline points={h} /></div>
       <div className="tbl"><table>
         <thead><tr><th>Ημ/νία</th><th>Τιμολόγιο</th><th className="r">Ποσότητα</th><th className="r">Τιμή χωρίς ΦΠΑ</th><th className="r">Μεταβολή</th></tr></thead>
@@ -1227,6 +1262,12 @@ function unitWord(u) {
   if (/^(ΦΙΑΛ|ΜΠΟΥΚ)/.test(k)) return "το μπουκάλι";
   return "ανά " + u;
 }
+// Ποσότητα σε απλά λόγια: "5,5 κιλά", "1 τεμάχιο"
+const UNIT_FORMS = { "το κιλό": ["κιλό", "κιλά"], "το τεμάχιο": ["τεμάχιο", "τεμάχια"], "το λίτρο": ["λίτρο", "λίτρα"], "το κιβώτιο": ["κιβώτιο", "κιβώτια"], "τη συσκευασία": ["συσκευασία", "συσκευασίες"], "το μπουκάλι": ["μπουκάλι", "μπουκάλια"] };
+function qtyText(q, u) { const f = UNIT_FORMS[unitWord(u)]; const n = fmtQty(q); return f ? `${n} ${q === 1 ? f[0] : f[1]}` : `${n}${u ? " " + u : ""}`; }
+// Πορεία τιμής χωρίς επαναλήψεις: [{price, date}] όπου αλλάζει η τιμή
+function priceSteps(h) { const out = []; for (const x of h) if (!out.length || Math.abs(x.price - out[out.length - 1].price) >= 0.005) out.push(x); return out; }
+
 // Διαφορά τιμής: κάτω από 1 € σε λεπτά ("2 λεπτά"), αλλιώς σε ευρώ
 function fmtDiff(d) { const c = Math.round(Math.abs(d) * 100); return Math.abs(d) < 1 ? (c <= 1 ? "1 λεπτό" : c + " λεπτά") : fmtEur(Math.abs(d)); }
 
@@ -1245,7 +1286,7 @@ function periodChanges(products, r, threshold) {
     const last = inP[inP.length - 1];
     const dir = Math.abs(extra) >= 0.005 ? Math.sign(extra) : Math.sign(last.price - base);
     if (!dir) continue;
-    out.push({ key: p.key, supplierId: p.supplierId, description: p.description, unit: p.unit, base, baseDate: before ? before.date : inP[0].date, now: last.price, nowDate: last.date, max: Math.max(...buys.map(x => x.price)), min: Math.min(...buys.map(x => x.price)), extra, dir, buys: buys.length });
+    out.push({ key: p.key, supplierId: p.supplierId, description: p.description, unit: p.unit, base, rows: buys.map(x => ({ date: x.date, qty: x.qty > 0 ? x.qty : 1, price: x.price, diff: x.price - base, amt: (x.price - base) * (x.qty > 0 ? x.qty : 1) })), steps: priceSteps(before ? [before, ...inP] : inP), baseDate: before ? before.date : inP[0].date, now: last.price, nowDate: last.date, max: Math.max(...buys.map(x => x.price)), min: Math.min(...buys.map(x => x.price)), extra, dir, buys: buys.length });
   }
   return out;
 }
@@ -1266,6 +1307,23 @@ function ChangeItem({ c, sup, unread, cheaper, onOpen }) {
           : <>{up ? "Ακρίβυνε" : "Φθήνυνε"} από <b>{fmtPrice(c.base)}</b> σε <b>{fmtPrice(c.now)}</b> {uw} ({fmtDiff(c.now - c.base)} {up ? "πιο ακριβό" : "πιο φθηνό"}).</>}
         {m >= 0.005 && <> Σε αυτό το διάστημα {up ? "πλήρωσες" : "γλίτωσες"} <b>{fmtEur(m)}</b>{up ? " παραπάνω" : ""} {c.buys === 1 ? "σε 1 αγορά" : `σε ${c.buys} αγορές`}.</>}
       </div>
+      {c.steps.length > 2 && <div className="al-path">Πορεία τιμής: {c.steps.map((x, i) => <span key={i}>{i > 0 && <i> → </i>}<b>{fmtPrice(x.price)}</b> <span className="mut">({fmtShortDate(x.date)})</span></span>)}</div>}
+      {m >= 0.005 && (
+        <details className="al-calc" onClick={e => e.stopPropagation()}>
+          <summary>Πώς βγαίνει το {fmtEur(m)}</summary>
+          <div className="al-rows">
+            <div className="mut">Τιμή αναφοράς: <b>{fmtPrice(c.base)}</b> {uw}, από την αγορά της {fmtDate(c.baseDate)}. Κάθε επόμενη αγορά συγκρίνεται με αυτή:</div>
+            {c.rows.map((x, i) => (
+              <div key={i} className="al-row">
+                <span className="nw">{fmtDate(x.date)}</span>
+                <span>{qtyText(x.qty, c.unit)} στα {fmtPrice(x.price)} → {Math.abs(x.diff) < 0.005 ? "ίδια τιμή" : <>{fmtPrice(Math.abs(x.diff))} {x.diff > 0 ? "παραπάνω" : "λιγότερα"} {uw || "ανά μονάδα"}</>}</span>
+                <b className={"nw " + (x.amt > 0.004 ? "up" : x.amt < -0.004 ? "down" : "mut")}>{x.amt > 0.004 ? "+" : x.amt < -0.004 ? "−" : ""}{fmtEur(Math.abs(x.amt))}</b>
+              </div>
+            ))}
+            <div className="al-row tot"><span /><span>Σύνολο</span><b className={c.extra > 0 ? "up" : "down"}>{c.extra > 0 ? "+" : "−"}{fmtEur(m)}</b></div>
+          </div>
+        </details>
+      )}
       {cheaper && <div className="al-tip">Το έχεις βρει φθηνότερα: <b>{fmtPrice(cheaper.last.price)}</b> {uw} από {cheaper.supName} ({fmtDate(cheaper.last.date)}).</div>}
     </div>
   );

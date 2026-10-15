@@ -143,6 +143,23 @@ input.in:focus,select.in:focus{outline:2px solid var(--brass-soft);border-color:
 .drop.over{border-color:var(--brass);background:var(--brass-soft)}
 .drop-t{font-size:17px;font-weight:650;margin-bottom:4px}
 .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.nbar{position:relative;display:flex;gap:8px;align-items:center}
+.nb-btn{position:relative;width:42px;height:42px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.nb-btn:hover,.nb-btn.on{border-color:var(--brass)} .nb-btn svg{width:20px;height:20px}
+.nbar.dark .nb-btn{border:0;background:rgba(255,255,255,.08);color:#fff;width:38px;height:38px}
+.nb-badge{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;padding:0 5px;border-radius:99px;background:var(--up);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--paper)}
+.nbar.dark .nb-badge{border-color:var(--ink)}
+.nb-drop{position:absolute;top:calc(100% + 8px);right:0;width:380px;max-width:calc(100vw - 24px);background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:0 12px 32px rgba(28,34,48,.16);z-index:50;overflow:hidden}
+.nb-head{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line2)}
+.nb-empty{padding:22px 16px;color:var(--muted);font-size:14px;text-align:center;line-height:1.6;word-break:break-all}
+.nb-item{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;padding:10px 16px;border:0;border-top:1px solid var(--line2);background:none;cursor:pointer;font:inherit;color:inherit}
+.nb-item:first-of-type{border-top:0} .nb-item:hover{background:var(--paper)} .nb-item.new{background:#fffdf5}
+.nb-ic{flex:0 0 28px;height:28px;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.nb-ic.up{background:var(--up-soft);color:var(--up)} .nb-ic.down{background:var(--down-soft);color:var(--down)} .nb-ic.mail{background:var(--brass-soft);color:var(--brass-d)} .nb-ic svg{width:15px;height:15px}
+.nb-txt{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1} .nb-txt .up{color:var(--up);font-weight:600} .nb-txt .down{color:var(--down);font-weight:600}
+.nb-foot{display:block;width:100%;padding:11px 16px;border:0;border-top:1px solid var(--line2);background:var(--paper);font:inherit;font-weight:600;font-size:14px;color:var(--brass-d);cursor:pointer;text-align:center}
+.nb-foot.strong{background:var(--ink);color:#fff}
+@media (max-width:700px){ .nbar.dark .nb-drop{position:fixed;top:62px;left:12px;right:12px;width:auto;max-width:none} }
 .inbox-cta{display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid var(--brass);border-radius:var(--r-lg);background:var(--brass-soft)}
 .addr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;word-break:break-all}
 .addr .btn{font-family:inherit;font-family:'Commissioner',system-ui,sans-serif}
@@ -418,6 +435,7 @@ const P = {
   truck: "M3 6h11v10H3zm11 4h4l3 3v3h-7M7 19.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z",
   box: "M12 3 3 7.5v9L12 21l9-4.5v-9zm0 0v18M3 7.5l9 4.5 9-4.5",
   bell: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zm4 4h4",
+  mail: "M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm-1 1 9 6.5L21 7",
   gear: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm8.5 3a8.5 8.5 0 0 0-.1-1.3l2-1.6-2-3.4-2.4 1a8 8 0 0 0-2.2-1.3L15.5 2h-4l-.4 2.4A8 8 0 0 0 9 5.7l-2.4-1-2 3.4 2 1.6a8.5 8.5 0 0 0 0 2.6l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 2.2 1.3l.4 2.4h4l.4-2.4a8 8 0 0 0 2.2-1.3l2.4 1 2-3.4-2-1.6c.1-.4.1-.9.1-1.3z",
   up: "M12 19V5m-6 6 6-6 6 6", file: "M12 3v12m-5-5 5 5 5-5M5 21h14", plus: "M12 5v14M5 12h14", back: "M15 18l-6-6 6-6",
 };
@@ -674,7 +692,7 @@ function ReadingCard() {
     </div>
   );
 }
-function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onEditDone, onInboxChange }) {
+function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onEditDone, onInboxChange, autoInbox, onAutoDone }) {
   const [files, setFiles] = useState([]);       // {id, blob, mimeType, url, name}
   const [phase, setPhase] = useState(editInv ? "review" : "pick");   // pick | reading | review | done
   const [draft, setDraft] = useState(() => editInv ? invoiceToDraft(editInv, data.suppliers.find(x => x.id === editInv.supplierId)) : null);
@@ -697,6 +715,8 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
   useEffect(() => { if (!editInv && token) inboxList(token).then(setInbox); }, [token]); // eslint-disable-line
   // Όταν ένα τιμολόγιο από email αποθηκευτεί ή παραλειφθεί, φεύγει από τη θυρίδα
   function inboxDone(it) { if (it && it.inboxKey && token) { inboxDelete(token, it.inboxKey); onInboxChange && onInboxChange(); } }
+  // Από το dropdown «Μηνύματα»: η ανάγνωση ξεκινά μόλις φορτωθούν τα email
+  useEffect(() => { if (autoInbox && inbox.length && phase === "pick" && !inboxBusy) { onAutoDone && onAutoDone(); readInbox(); } }, [autoInbox, inbox]); // eslint-disable-line
   async function readInbox() {
     setInboxBusy(true); setError("");
     const files = [], keys = [], errs = [];
@@ -1473,7 +1493,60 @@ function AlertsPage({ data, products = [], supById, openProduct, markAllRead, se
 /* =========================================================
    Αρχική
    ========================================================= */
-function Dashboard({ data, supById, products, go, openSupplier, openProduct, openInvoice, settings, inboxN = 0 }) {
+// Καμπανάκι (αλλαγές τιμών) και μηνύματα (τιμολόγια από email), με dropdown
+const fmtWhen = iso => { if (!iso) return ""; const d = new Date(iso), now = new Date(); const t = d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" }); return d.toDateString() === now.toDateString() ? "σήμερα " + t : d.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit" }) + " " + t; };
+function NotifBar({ alerts, supById, inbox, inboxAddr, markAllRead, openProduct, goAlerts, readInbox, dark }) {
+  const [open, setOpen] = useState(null); // "bell" | "mail" | null
+  const [seen, setSeen] = useState(new Set()); // ποιες ήταν νέες τη στιγμή που άνοιξε το καμπανάκι
+  const ref = useRef();
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(null); };
+    document.addEventListener("mousedown", h); document.addEventListener("touchstart", h);
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("touchstart", h); };
+  }, [open]);
+  const unread = alerts.filter(a => !a.read);
+  const recent = [...alerts].sort((a, b) => (a.read - b.read) || b.newDate.localeCompare(a.newDate) || b.createdAt - a.createdAt).slice(0, 8);
+  const badge = n => n > 0 && <span className="nb-badge">{n > 9 ? "9+" : n}</span>;
+  function toggleBell() {
+    if (open === "bell") { setOpen(null); return; }
+    setSeen(new Set(unread.map(a => a.id))); setOpen("bell");
+    if (unread.length) markAllRead(); // ο αριθμός σβήνει μόνο όταν πατηθεί το καμπανάκι
+  }
+  return (
+    <div className={"nbar" + (dark ? " dark" : "")} ref={ref}>
+      <button className={"nb-btn" + (open === "mail" ? " on" : "")} onClick={() => setOpen(open === "mail" ? null : "mail")} aria-label="Τιμολόγια από email"><Icon n="mail" />{badge(inbox.length)}</button>
+      <button className={"nb-btn" + (open === "bell" ? " on" : "")} onClick={toggleBell} aria-label="Ειδοποιήσεις τιμών"><Icon n="bell" />{badge(unread.length)}</button>
+      {open === "bell" && (
+        <div className="nb-drop">
+          <div className="nb-head"><b>Ειδοποιήσεις τιμών</b><span className="sp" />{seen.size > 0 && <span className="mut sm">{seen.size} νέες</span>}</div>
+          {!recent.length ? <div className="nb-empty">Καμία αλλαγή τιμής ακόμα.</div> : recent.map(a => (
+            <button key={a.id} className={"nb-item" + (seen.has(a.id) ? " new" : "")} onClick={() => { setOpen(null); openProduct(a.productKey); }}>
+              <span className={"nb-ic " + (a.pct > 0 ? "up" : "down")}>{a.pct > 0 ? "▲" : "▼"}</span>
+              <span className="nb-txt"><b className="ell">{a.description}</b><span className="mut sm ell">{supById[a.supplierId]?.name || ""}</span>
+                <span className="sm">{fmtPrice(a.oldPrice)} → <b>{fmtPrice(a.newPrice)}</b> <span className={a.pct > 0 ? "up" : "down"}>{a.pct > 0 ? "+" : "−"}{Math.abs(a.pct).toLocaleString("el-GR", { maximumFractionDigits: 1 })}%</span> · {fmtDate(a.newDate)}</span></span>
+            </button>
+          ))}
+          <button className="nb-foot" onClick={() => { setOpen(null); goAlerts(); }}>Όλες οι αλλαγές τιμών →</button>
+        </div>
+      )}
+      {open === "mail" && (
+        <div className="nb-drop">
+          <div className="nb-head"><b>Τιμολόγια από email</b></div>
+          {!inbox.length ? <div className="nb-empty">Κανένα νέο email.{inboxAddr && <><br /><span className="sm">Στείλε τιμολόγια στο <b>{inboxAddr}</b></span></>}</div> : inbox.slice(0, 8).map(m => (
+            <div key={m.key} className="nb-item new" style={{ cursor: "default" }}>
+              <span className="nb-ic mail"><Icon n="mail" /></span>
+              <span className="nb-txt"><b className="ell">{(m.from || "").replace(/<.*>/, "").trim() || m.from || "Άγνωστος αποστολέας"}</b><span className="sm ell">{m.subject || m.filename}</span><span className="mut sm ell">{m.filename} · {fmtWhen(m.receivedAt)}</span></span>
+            </div>
+          ))}
+          {inbox.length > 0 && <button className="nb-foot strong" onClick={() => { setOpen(null); readInbox(); }}>Ανάγνωση {inbox.length === 1 ? "του τιμολογίου" : `και των ${inbox.length}`} →</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Dashboard({ data, supById, products, go, openSupplier, openProduct, openInvoice, settings, inboxN = 0, notif = null }) {
   const now = new Date();
   const m = periodRange({ preset: "month" }), pm = periodRange({ preset: "prev" });
   const thisM = data.invoices.filter(i => inRange(i.date, m)), prevM = data.invoices.filter(i => inRange(i.date, pm));
@@ -1502,7 +1575,7 @@ function Dashboard({ data, supById, products, go, openSupplier, openProduct, ope
   );
 
   if (!data.invoices.length) return (
-    <>{inboxBanner}
+    <><div className="row mb"><span className="sp" />{notif}</div>{inboxBanner}
     <div className="card" style={{ padding: "56px 28px", maxWidth: 640 }}>
       <h1>Ξεκίνα με το πρώτο τιμολόγιο</h1>
       <p className="sub" style={{ maxWidth: 480, margin: "10px 0 24px" }}>Φωτογράφισέ το ή ανέβασε το PDF. Η εφαρμογή διαβάζει προμηθευτή, είδη και τιμές, φτιάχνει την καρτέλα του προμηθευτή και σε ειδοποιεί όταν κάτι ακριβαίνει.</p>
@@ -1515,6 +1588,7 @@ function Dashboard({ data, supById, products, go, openSupplier, openProduct, ope
       <div className="phead">
         <div><h1>{settings.businessName || "Επισκόπηση"}</h1><p className="sub">Αγορές και τιμές, {now.toLocaleDateString("el-GR", { month: "long", year: "numeric" })}</p></div>
         <span className="sp" />
+        {notif}
         <button className="btn g" onClick={() => go("scan")}><Icon n="cam" /> Νέο τιμολόγιο</button>
       </div>
       {inboxBanner}
@@ -1792,9 +1866,13 @@ function App() {
   async function saveSettings(s) { await dbPut("meta", { ...s, id: "settings" }); await reload(); }
   // Διεύθυνση email για τιμολόγια: δημιουργείται μία φορά ανά επιχείρηση
   useEffect(() => { if (ready && settings.ownAfm && !settings.inboxToken) saveSettings({ ...settings, inboxToken: newInboxToken() }); }, [ready, settings.ownAfm, settings.inboxToken]); // eslint-disable-line
-  const [inboxN, setInboxN] = useState(0);
-  const refreshInbox = () => { if (settings.inboxToken) inboxList(settings.inboxToken).then(l => setInboxN(l.length)); };
+  const [inboxItems, setInboxItems] = useState([]);
+  const inboxN = inboxItems.length;
+  const refreshInbox = () => { if (settings.inboxToken) inboxList(settings.inboxToken).then(setInboxItems); };
   useEffect(refreshInbox, [settings.inboxToken, page]); // eslint-disable-line
+  // Νέα email ελέγχονται κάθε λεπτό, όσο η σελίδα είναι ανοιχτή
+  useEffect(() => { const t = setInterval(() => { if (!document.hidden) refreshInbox(); }, 60000); return () => clearInterval(t); }, [settings.inboxToken]); // eslint-disable-line
+  const [autoInbox, setAutoInbox] = useState(false);
   async function updateSupplier(s) { await dbPut("suppliers", s); await reload(); setToastMsg("Αποθηκεύτηκε"); }
   // Συγχώνευση: τα τιμολόγια του fromId περνάνε στον toId, ο fromId διαγράφεται
   async function mergeSuppliers(fromId, toId) {
@@ -1818,7 +1896,7 @@ function App() {
 
   let content;
   const editInv = editId && data.invoices.find(i => i.id === editId);
-  if (page === "scan") content = <ScanPage key={editId || "new"} editInv={editInv} onEditDone={endEdit} data={vdata} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} onInboxChange={refreshInbox} />;
+  if (page === "scan") content = <ScanPage key={editId || "new"} editInv={editInv} onEditDone={endEdit} data={vdata} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} onInboxChange={refreshInbox} autoInbox={autoInbox} onAutoDone={() => setAutoInbox(false)} />;
   else if (page === "invoices") content = <InvoicesPage data={vdata} supById={supById} openInvoice={setInvoiceId} />;
   else if (page === "suppliers") content = supplier
     ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} onMerge={mergeSuppliers} />
@@ -1826,13 +1904,17 @@ function App() {
   else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} autoClassify={autoClassify} />;
   else if (page === "alerts") content = <AlertsPage data={vdata} products={products} settings={settings} supById={supById} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
   else if (page === "settings") content = <SettingsPage products={products} renameCategory={renameCategory} settings={settings} saveSettings={saveSettings} data={vdata} reload={reload} toast={setToastMsg} />;
-  else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} openInvoice={setInvoiceId} settings={settings} inboxN={inboxN} />;
+  else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} openInvoice={setInvoiceId} settings={settings} inboxN={inboxN} notif={notifBar(false)} />;
 
+  function notifBar(dark) {
+    return <NotifBar dark={dark} alerts={alerts} supById={supById} inbox={inboxItems} inboxAddr={settings.inboxToken ? settings.inboxToken + "@" + INBOX_DOMAIN : ""}
+      markAllRead={markAllRead} openProduct={setProductKeyOpen} goAlerts={() => go("alerts")} readInbox={() => { setAutoInbox(true); go("scan"); }} />;
+  }
   return (
     <>
       <div className="mtop">
         <div className="brand"><b>Price<em>Armor</em></b><span>AR Akron</span></div><span className="sp" />
-        <button className="icbtn" onClick={() => go("alerts")} aria-label="Αλλαγές τιμών"><Icon n="bell" />{unread > 0 && <span className="dot" />}</button>
+        {notifBar(true)}
         <button className="icbtn" onClick={() => go("settings")} aria-label="Ρυθμίσεις"><Icon n="gear" /></button>
       </div>
       <div className="app">

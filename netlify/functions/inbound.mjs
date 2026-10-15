@@ -19,7 +19,11 @@ export default async (req) => {
   if (ev?.type !== "email.received") return new Response("ignored");
   const d = ev.data || {};
   const domain = (process.env.INBOX_DOMAIN || "inbox.arakronservices.gr").toLowerCase();
-  const tokens = [...new Set((d.to || []).map((a) => String(a).toLowerCase().match(/([a-z0-9]{10,40})@([a-z0-9.-]+)/)).filter((m) => m && m[2] === domain).map((m) => m[1]))];
+  // Μόνο θυρίδες που έχουν δηλωθεί από κάποια εφαρμογή. Email σε ανύπαρκτες διευθύνσεις πετιούνται.
+  const owners = getStore({ name: "inbox-owners", consistency: "strong" });
+  const cand = [...new Set((d.to || []).map((a) => String(a).toLowerCase().match(/([a-z0-9][a-z0-9-]{1,38}[a-z0-9])@([a-z0-9.-]+)/)).filter((m) => m && m[2] === domain).map((m) => m[1]))];
+  const tokens = [];
+  for (const t of cand) if (await owners.get(t)) tokens.push(t);
   if (!tokens.length || !d.email_id) return new Response("no recipient");
 
   const key = process.env.RESEND_API_KEY;

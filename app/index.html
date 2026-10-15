@@ -678,9 +678,26 @@ async function batchProblems(draft, ownAfm) {
 const BATCH_MAX = 30, BATCH_PAR = 2;
 // Τιμολόγια με email: κάθε επιχείρηση έχει τη δική της διεύθυνση <κωδικός>@inbox.arakronservices.gr
 const INBOX_DOMAIN = "inbox.arakronservices.gr";
-function newInboxToken() { const a = "abcdefghjkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint8Array(12)); return [...r].map(x => a[x % a.length]).join(""); }
-async function inboxList(t) { try { const r = await fetch("/api/inbox?t=" + encodeURIComponent(t)); if (!r.ok) return []; return (await r.json()).items || []; } catch { return []; } }
-function inboxDelete(t, key) { return fetch("/api/inbox?t=" + encodeURIComponent(t) + "&key=" + encodeURIComponent(key), { method: "DELETE" }).catch(() => {}); }
+// Η διεύθυνση είναι δημόσια (μόνο για αποστολή). Για ανάγνωση της θυρίδας χρειάζεται το κρυφό κλειδί (settings.inboxKey),
+// που υπάρχει μόνο σε αυτή την εφαρμογή και στο αντίγραφο ασφαλείας.
+function newInboxKey() { const a = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint8Array(40)); return [...r].map(x => a[x % a.length]).join(""); }
+const GR2LAT = { "ου": "ou", "αι": "ai", "ει": "ei", "οι": "oi", "μπ": "mp", "ντ": "nt", "γκ": "gk", "θ": "th", "χ": "ch", "ψ": "ps", "α": "a", "β": "v", "γ": "g", "δ": "d", "ε": "e", "ζ": "z", "η": "i", "ι": "i", "κ": "k", "λ": "l", "μ": "m", "ν": "n", "ξ": "x", "ο": "o", "π": "p", "ρ": "r", "σ": "s", "ς": "s", "τ": "t", "υ": "y", "φ": "f", "ω": "o" };
+// "Πλάκι Μεζέ ΙΚΕ" → "plakimeze": λατινικά, χωρίς νομική μορφή, κενά και σύμβολα
+function slugName(name) {
+  const ART = new Set(["Ο", "Η", "ΤΟ", "ΟΙ", "ΤΑ", "ΤΟΥ", "ΤΗΣ", "ΤΩΝ", "ΤΟΝ", "ΤΗΝ", "ΣΤΟ", "ΣΤΗ", "ΣΤΗΝ", "ΣΤΑ", "THE"]);
+  const words = normKey(name).split(" ").filter(w => w && !LEGAL_W.has(w) && !ART.has(w));
+  let t = words.join("").toLowerCase();
+  t = t.replace(/ου|αι|ει|οι|μπ|ντ|γκ|[α-ω]/g, m => GR2LAT[m] ?? "");
+  return t.replace(/[^a-z0-9]/g, "").slice(0, 30);
+}
+const cleanName = v => String(v || "").toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-").slice(0, 40);
+async function inboxPost(action, body) {
+  try { const r = await fetch("/api/inbox?action=" + action, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); return { status: r.status, ...j }; }
+  catch { return { status: 0, error: "Δεν υπάρχει σύνδεση." }; }
+}
+const inboxHdr = k => ({ headers: { "X-Inbox-Key": k || "" } });
+async function inboxList(t, k) { try { const r = await fetch("/api/inbox?t=" + encodeURIComponent(t), inboxHdr(k)); if (!r.ok) return []; return (await r.json()).items || []; } catch { return []; } }
+function inboxDelete(t, key, k) { return fetch("/api/inbox?t=" + encodeURIComponent(t) + "&key=" + encodeURIComponent(key), { method: "DELETE", ...inboxHdr(k) }).catch(() => {}); }
 
 function ReadingCard() {
   const [sec, setSec] = useState(0);
@@ -709,12 +726,12 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
   const queue = useRef([]), active = useRef(0), saveChain = useRef(Promise.resolve());
   const upd = (id, patch) => setItems(its => its.map(x => x.id === id ? { ...x, ...patch } : x));
   // Τιμολόγια που ήρθαν με email και περιμένουν ανάγνωση
-  const token = settings.inboxToken || "";
+  const token = settings.inboxOk ? settings.inboxToken || "" : "", ikey = settings.inboxKey || "";
   const [inbox, setInbox] = useState([]);
   const [inboxBusy, setInboxBusy] = useState(false);
-  useEffect(() => { if (!editInv && token) inboxList(token).then(setInbox); }, [token]); // eslint-disable-line
+  useEffect(() => { if (!editInv && token) inboxList(token, ikey).then(setInbox); }, [token]); // eslint-disable-line
   // Όταν ένα τιμολόγιο από email αποθηκευτεί ή παραλειφθεί, φεύγει από τη θυρίδα
-  function inboxDone(it) { if (it && it.inboxKey && token) { inboxDelete(token, it.inboxKey); onInboxChange && onInboxChange(); } }
+  function inboxDone(it) { if (it && it.inboxKey && token) { inboxDelete(token, it.inboxKey, ikey); onInboxChange && onInboxChange(); } }
   // Από το dropdown «Μηνύματα»: η ανάγνωση ξεκινά μόλις φορτωθούν τα email
   useEffect(() => { if (autoInbox && inbox.length && phase === "pick" && !inboxBusy) { onAutoDone && onAutoDone(); readInbox(); } }, [autoInbox, inbox]); // eslint-disable-line
   async function readInbox() {
@@ -722,7 +739,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
     const files = [], keys = [], errs = [];
     for (const m of inbox.slice(0, BATCH_MAX)) {
       try {
-        const r = await fetch("/api/inbox?t=" + encodeURIComponent(token) + "&key=" + encodeURIComponent(m.key));
+        const r = await fetch("/api/inbox?t=" + encodeURIComponent(token) + "&key=" + encodeURIComponent(m.key), inboxHdr(ikey));
         if (!r.ok) throw new Error();
         const blob = await r.blob();
         files.push(new File([blob], m.filename || "timologio.pdf", { type: m.contentType || blob.type })); keys.push(m);
@@ -811,7 +828,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
     } catch (e) { setError(e.message || String(e)); setPhase("pick"); }
   }
 
-  function reset() { if (editInv) { onEditDone(editInv.id); return; } if (batchId) { backToBatch(); return; } items.forEach(x => x.file.url && URL.revokeObjectURL(x.file.url)); setItems([]); if (token) inboxList(token).then(setInbox); setReadMeta(null); files.forEach(f => f.url && URL.revokeObjectURL(f.url)); setFiles([]); setDraft(null); setPhase("pick"); setError(""); setDoneInfo(null); }
+  function reset() { if (editInv) { onEditDone(editInv.id); return; } if (batchId) { backToBatch(); return; } items.forEach(x => x.file.url && URL.revokeObjectURL(x.file.url)); setItems([]); if (token) inboxList(token, ikey).then(setInbox); setReadMeta(null); files.forEach(f => f.url && URL.revokeObjectURL(f.url)); setFiles([]); setDraft(null); setPhase("pick"); setError(""); setDoneInfo(null); }
 
   const matched = useMemo(() => {
     if (!draft) return null;
@@ -1654,6 +1671,38 @@ function Dashboard({ data, supById, products, go, openSupplier, openProduct, ope
 /* =========================================================
    Ρυθμίσεις
    ========================================================= */
+// Αλλαγή ονόματος της διεύθυνσης email (π.χ. "plakimeze"), με έλεγχο διαθεσιμότητας
+function InboxRename({ settings, saveSettings, toast }) {
+  const [v, setV] = useState(""), [st, setSt] = useState(null), [busy, setBusy] = useState(false); // st: null | "ok" | "taken" | "invalid" | μήνυμα
+  const cur = settings.inboxToken, val = cleanName(v);
+  const valid = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/.test(val) && !val.includes("--");
+  useEffect(() => {
+    setSt(null); if (!val || val === cur) return;
+    if (!valid) { setSt("invalid"); return; }
+    const t = setTimeout(async () => { const r = await inboxPost("check", { name: val }); setSt(r.status === 200 ? (r.available ? "ok" : "taken") : (r.error || "invalid")); }, 400);
+    return () => clearTimeout(t);
+  }, [val]); // eslint-disable-line
+  async function go() {
+    if (!confirm(`Η διεύθυνση θα γίνει ${val}@${INBOX_DOMAIN}. Η παλιά (${cur}@…) σταματά να δουλεύει και πρέπει να δώσεις τη νέα στους προμηθευτές. Συνέχεια;`)) return;
+    setBusy(true);
+    const r = await inboxPost("rename", { name: cur, to: val, key: settings.inboxKey });
+    setBusy(false);
+    if (r.status === 200) { await saveSettings({ ...settings, inboxToken: r.name }); setV(""); toast("Η διεύθυνση άλλαξε"); }
+    else setSt(r.error || "Δεν έγινε η αλλαγή.");
+  }
+  return (
+    <div className="row mt" style={{ alignItems: "flex-start" }}>
+      <div style={{ flex: 1, minWidth: 220 }}>
+        <div className="row" style={{ gap: 6 }}><input className="in" style={{ maxWidth: 260 }} placeholder={slugName(settings.businessName) || "onoma"} value={v} onChange={e => setV(cleanName(e.target.value))} /><span className="mut sm">@{INBOX_DOMAIN}</span></div>
+        <div className="sm" style={{ marginTop: 4, minHeight: 18, color: st === "ok" ? "var(--down)" : "var(--up)" }}>
+          {st === "ok" ? "✓ Διαθέσιμο" : st === "taken" ? "Το όνομα χρησιμοποιείται ήδη." : st === "invalid" ? "3–40 λατινικά γράμματα, αριθμοί ή παύλες." : st || <span className="mut">Θες άλλο όνομα; Γράψ' το εδώ.</span>}
+        </div>
+      </div>
+      <button className="btn sm" disabled={st !== "ok" || busy} onClick={go}>{busy ? "Αλλαγή…" : "Αλλαγή διεύθυνσης"}</button>
+    </div>
+  );
+}
+
 function SettingsPage({ settings, saveSettings, data, reload, toast, products, renameCategory }) {
   const [s, setS] = useState(settings);
   const impRef = useRef();
@@ -1690,12 +1739,12 @@ function SettingsPage({ settings, saveSettings, data, reload, toast, products, r
       <div className="card mb">
         <h2>Τιμολόγια με email</h2>
         <p className="mut sm" style={{ marginTop: 0 }}>Δώσε αυτή τη διεύθυνση στους προμηθευτές σου, ή κάνε προώθηση εκεί τα email με τιμολόγια. Τα PDF και οι φωτογραφίες που φτάνουν εμφανίζονται στο «Νέο τιμολόγιο» για ανάγνωση.</p>
-        {settings.inboxToken ? (
+        {settings.inboxOk && settings.inboxToken ? (
           <div className="addr"><span style={{ flex: 1, minWidth: 0 }}>{settings.inboxToken}@{INBOX_DOMAIN}</span>
             <button className="btn sm" onClick={() => { navigator.clipboard.writeText(settings.inboxToken + "@" + INBOX_DOMAIN).then(() => toast("Αντιγράφηκε")).catch(() => {}); }}>Αντιγραφή</button></div>
-        ) : <div className="mut sm">Δημιουργείται…</div>}
-        <div className="row mt"><span className="mut sm">Αν η διεύθυνση έχει διαρρεύσει, φτιάξε νέα. Η παλιά θα σταματήσει να δουλεύει.</span><span className="sp" />
-          <button className="btn sm" onClick={() => { if (confirm("Νέα διεύθυνση; Η παλιά θα σταματήσει να δουλεύει και πρέπει να δώσεις τη νέα στους προμηθευτές.")) saveSettings({ ...settings, inboxToken: newInboxToken() }); }}>Νέα διεύθυνση</button></div>
+        ) : <div className="mut sm">Η διεύθυνση ενεργοποιείται… (χρειάζεται σύνδεση στο internet)</div>}
+        {settings.inboxOk && <InboxRename settings={settings} saveSettings={saveSettings} toast={toast} />}
+        <p className="mut sm" style={{ marginBottom: 0 }}>Με τη διεύθυνση οι προμηθευτές μπορούν μόνο να στέλνουν. Τα τιμολόγια τα διαβάζει μόνο αυτή η εφαρμογή, με ένα κρυφό κλειδί που περιλαμβάνεται στη «Λήψη αντιγράφου». Κράτα αντίγραφο για να μη χάσεις την πρόσβαση αν αλλάξεις συσκευή.</p>
       </div>
       <div className="card mb">
         <h2>Κατηγορίες ειδών</h2>
@@ -1865,11 +1914,38 @@ function App() {
   }
   async function saveSettings(s) { await dbPut("meta", { ...s, id: "settings" }); await reload(); }
   // Διεύθυνση email για τιμολόγια: δημιουργείται μία φορά ανά επιχείρηση
-  useEffect(() => { if (ready && settings.ownAfm && !settings.inboxToken) saveSettings({ ...settings, inboxToken: newInboxToken() }); }, [ready, settings.ownAfm, settings.inboxToken]); // eslint-disable-line
+  // Δημιουργία/δήλωση της θυρίδας: όνομα από την επωνυμία (π.χ. plakimeze) + κρυφό κλειδί.
+  // Παλιές εκδόσεις είχαν τυχαίο κωδικό χωρίς κλειδί: τον δηλώνουμε και, αν γίνεται, τον αλλάζουμε στο όνομα του μαγαζιού.
+  const inboxBusy = useRef(false);
+  useEffect(() => {
+    if (!ready || !settings.ownAfm || settings.inboxOk || inboxBusy.current) return;
+    inboxBusy.current = true;
+    (async () => {
+      try {
+        const key = settings.inboxKey || newInboxKey();
+        const base = slugName(settings.businessName) || "epixeirisi";
+        let name = settings.inboxToken || "";
+        if (name) {
+          const r = await inboxPost("register", { name, key });
+          if (r.status === 409) name = ""; // κάποιος άλλος το έχει: νέο όνομα
+          else if (r.status !== 200) return;
+          else if (!settings.inboxKey && name !== base && /^[a-z0-9]{12}$/.test(name)) { // παλιός τυχαίος κωδικός
+            const c = await inboxPost("check", { name: base });
+            if (c.available) { const m = await inboxPost("rename", { name, to: base, key }); if (m.status === 200) name = m.name; }
+          }
+        }
+        if (!name) {
+          const tries = [base, ...[2, 3, 4, 5, 6, 7, 8, 9].map(n => base + n), base + Math.floor(100 + Math.random() * 900)];
+          for (const n of tries) { const r = await inboxPost("register", { name: n, key }); if (r.status === 200) { name = n; break; } if (r.status !== 409) return; }
+        }
+        if (name) await saveSettings({ ...settings, inboxToken: name, inboxKey: key, inboxOk: true });
+      } finally { inboxBusy.current = false; }
+    })();
+  }, [ready, settings.ownAfm, settings.inboxOk]); // eslint-disable-line
   const [inboxItems, setInboxItems] = useState([]);
   const inboxN = inboxItems.length;
-  const refreshInbox = () => { if (settings.inboxToken) inboxList(settings.inboxToken).then(setInboxItems); };
-  useEffect(refreshInbox, [settings.inboxToken, page]); // eslint-disable-line
+  const refreshInbox = () => { if (settings.inboxOk && settings.inboxToken) inboxList(settings.inboxToken, settings.inboxKey).then(setInboxItems); };
+  useEffect(refreshInbox, [settings.inboxToken, settings.inboxOk, page]); // eslint-disable-line
   // Νέα email ελέγχονται κάθε λεπτό, όσο η σελίδα είναι ανοιχτή
   useEffect(() => { const t = setInterval(() => { if (!document.hidden) refreshInbox(); }, 60000); return () => clearInterval(t); }, [settings.inboxToken]); // eslint-disable-line
   const [autoInbox, setAutoInbox] = useState(false);
@@ -1907,7 +1983,7 @@ function App() {
   else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} openInvoice={setInvoiceId} settings={settings} inboxN={inboxN} notif={notifBar(false)} />;
 
   function notifBar(dark) {
-    return <NotifBar dark={dark} alerts={alerts} supById={supById} inbox={inboxItems} inboxAddr={settings.inboxToken ? settings.inboxToken + "@" + INBOX_DOMAIN : ""}
+    return <NotifBar dark={dark} alerts={alerts} supById={supById} inbox={inboxItems} inboxAddr={settings.inboxOk && settings.inboxToken ? settings.inboxToken + "@" + INBOX_DOMAIN : ""}
       markAllRead={markAllRead} openProduct={setProductKeyOpen} goAlerts={() => go("alerts")} readInbox={() => { setAutoInbox(true); go("scan"); }} />;
   }
   return (

@@ -106,6 +106,65 @@ ${ownAfm ? `- Ο αγοραστής έχει ΑΦΜ ${ownAfm}. Αυτό το Α�
 ${categoryRules(categories, businessType)}`;
 }
 
+// Το Gemini δεν ακολουθεί πάντα τα ονόματα πεδίων του schema (π.χ. "issue_date" αντί "date", "items" αντί "lines").
+// Εδώ μεταφράζουμε όλα τα συνηθισμένα ονόματα στα δικά μας, ώστε να μη χάνονται στοιχεία που διαβάστηκαν σωστά.
+const pick = (o, keys) => { if (!o || typeof o !== "object") return undefined; for (const k of keys) { const v = o[k]; if (v != null && v !== "") return v; } return undefined; };
+function toNum(v) {
+  if (typeof v === "number") return isFinite(v) ? v : null;
+  if (typeof v !== "string") return null;
+  let t = v.replace(/[€%\s]/g, "").replace(/[^\d.,\-]/g, "");
+  if (!t) return null;
+  if (t.includes(",") && t.includes(".")) t = t.lastIndexOf(",") > t.lastIndexOf(".") ? t.replace(/\./g, "").replace(",", ".") : t.replace(/,/g, "");
+  else if (t.includes(",")) t = t.replace(",", ".");
+  const n = parseFloat(t); return isFinite(n) ? n : null;
+}
+function toDate(v) {
+  if (typeof v !== "string") return v == null ? null : String(v);
+  const s = v.trim(); let m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  if ((m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/))) { const y = m[3].length === 2 ? "20" + m[3] : m[3]; return `${y}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`; }
+  return s || null;
+}
+const K = {
+  name: ["name", "company_name", "legal_name", "business_name", "title", "company", "eponymia"],
+  afm: ["afm", "vat_number", "vat_id", "tax_id", "taxId", "vatNumber", "tin", "vat"],
+  doy: ["doy", "tax_office", "taxOffice"], address: ["address", "full_address", "street"], phone: ["phone", "telephone", "tel", "phone_number"], email: ["email", "e_mail", "mail"],
+  number: ["number", "invoice_number", "document_number", "invoiceNumber", "doc_number", "no", "series_number", "account_number"],
+  date: ["date", "issue_date", "invoice_date", "date_of_issue", "issueDate", "invoiceDate", "document_date"],
+  type: ["type", "document_type", "invoice_type", "doc_type"], mark: ["mark", "MARK", "mydata_mark", "mark_number"],
+  net: ["net_total", "net_amount", "total_net", "subtotal", "net", "netTotal", "total_net_amount", "net_value"],
+  vat: ["vat_total", "vat_amount", "total_vat", "vatTotal", "tax_amount", "vat"],
+  total: ["total", "total_amount", "grand_total", "amount_due", "payable", "payable_amount", "gross_total", "totalAmount", "total_with_vat", "gross_amount"],
+  pay: ["payment_method", "paymentMethod", "payment"], due: ["due_date", "dueDate", "payment_due_date"],
+  lines: ["lines", "items", "line_items", "products", "invoice_lines", "lineItems", "details", "rows"],
+  desc: ["description", "name", "item", "product", "item_description", "title", "product_name"], code: ["code", "item_code", "sku", "product_code"],
+  qty: ["quantity", "qty", "amount_qty"], unit: ["unit", "unit_of_measure", "uom", "measurement_unit"],
+  up: ["unit_price", "price", "unitPrice", "price_per_unit", "unit_net_price"], disc: ["discount_pct", "discount", "discount_percent", "discountPct"],
+  lnet: ["net_amount", "net", "net_value", "line_total", "netAmount", "amount", "total", "value"], lvat: ["vat_pct", "vat_rate", "vatRate", "tax_rate", "vat_percent", "vat"],
+};
+function normalizeResult(raw) {
+  const r = raw && typeof raw === "object" ? raw : {};
+  const sup = pick(r, ["supplier", "seller", "issuer", "vendor", "from"]) || {};
+  const buy = pick(r, ["buyer", "customer", "client", "recipient", "to"]);
+  const inv = pick(r, ["invoice", "document", "header", "invoice_details", "summary"]) || {};
+  const both = (keys) => { const v = pick(inv, keys); return v !== undefined ? v : pick(r, keys); };
+  const party = (o) => o && typeof o === "object" ? { name: pick(o, K.name) ?? null, afm: pick(o, K.afm) != null ? String(pick(o, K.afm)) : null, doy: pick(o, K.doy) ?? null, address: pick(o, K.address) ?? null, phone: pick(o, K.phone) ?? null, email: pick(o, K.email) ?? null } : null;
+  let lines = pick(r, K.lines); if (!Array.isArray(lines)) lines = pick(inv, K.lines); if (!Array.isArray(lines)) lines = [];
+  const vatPct = (v) => { const n = toNum(v); return n != null && n > 0 && n < 1 ? Math.round(n * 100) : n; };
+  return {
+    supplier: party(sup) || {}, buyer: party(buy),
+    invoice: {
+      number: both(K.number) != null ? String(both(K.number)) : null, date: toDate(both(K.date)), type: both(K.type) ?? null, mark: both(K.mark) != null ? String(both(K.mark)) : null,
+      net_total: toNum(both(K.net)), vat_total: toNum(both(K.vat)), total: toNum(both(K.total)), payment_method: both(K.pay) ?? null, due_date: toDate(both(K.due)),
+    },
+    lines: lines.filter((l) => l && typeof l === "object").map((l) => ({
+      code: pick(l, K.code) != null ? String(pick(l, K.code)) : null, description: pick(l, K.desc) ?? null, quantity: toNum(pick(l, K.qty)), unit: pick(l, K.unit) ?? null,
+      unit_price: toNum(pick(l, K.up)), discount_pct: toNum(pick(l, K.disc)), net_amount: toNum(pick(l, K.lnet)), vat_pct: vatPct(pick(l, K.lvat)), category: pick(l, ["category", "kategoria"]) ?? null,
+    })),
+    notes: pick(r, ["notes", "note", "remarks"]) ?? null,
+  };
+}
+
 // Αν το μοντέλο έδωσε 2 από τα 3 ποσά, υπολογίζουμε το τρίτο. Αν δεν έδωσε γραμμές, μία γραμμή με την καθαρή αξία.
 function fixTotals(r) {
   const inv = r && r.invoice; if (!inv) return r;
@@ -244,7 +303,15 @@ ${items.map((x, i) => `${i}. ${x}`).join("\n")}` }];
       if (res.ok) {
         const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
         let result;
-        try { result = isInvoice ? fixTotals(JSON.parse(text)) : JSON.parse(text); } catch { result = null; }
+        try {
+          const raw = JSON.parse(text);
+          if (isInvoice) {
+            // Στα logs του Netlify: τι ονόματα πεδίων έστειλε το Gemini (για διάγνωση)
+            const l0 = Array.isArray(raw?.lines) ? raw.lines[0] : Array.isArray(raw?.items) ? raw.items[0] : null;
+            console.log("extract", model, thinking ? "low" : "full", JSON.stringify({ top: Object.keys(raw || {}), invoice: raw?.invoice ? Object.keys(raw.invoice) : null, line: l0 ? Object.keys(l0) : null }));
+          }
+          result = isInvoice ? fixTotals(normalizeResult(raw)) : raw;
+        } catch { result = null; }
         if (result && isInvoice) for (const l of result.lines || []) { if (l && badCat(l.category)) l.category = null; }
         if (result && !isInvoice) for (const a of result.assignments || []) { if (a && badCat(a.category)) a.category = ""; }
         if (result) {

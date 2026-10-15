@@ -143,6 +143,10 @@ input.in:focus,select.in:focus{outline:2px solid var(--brass-soft);border-color:
 .drop.over{border-color:var(--brass);background:var(--brass-soft)}
 .drop-t{font-size:17px;font-weight:650;margin-bottom:4px}
 .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.inbox-cta{display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid var(--brass);border-radius:var(--r-lg);background:var(--brass-soft)}
+.addr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;word-break:break-all}
+.addr .btn{font-family:inherit;font-family:'Commissioner',system-ui,sans-serif}
+@media (max-width:700px){ .inbox-cta{flex-wrap:wrap} }
 .batch-cta{display:flex;align-items:center;gap:14px;margin-top:12px;padding:14px 18px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card);cursor:pointer}
 .batch-cta:hover{border-color:var(--brass)}
 .pbar{height:6px;background:var(--line2);border-radius:99px;overflow:hidden} .pbar>div{height:100%;background:var(--brass);transition:width .4s}
@@ -640,6 +644,11 @@ async function batchProblems(draft, ownAfm) {
   return out;
 }
 const BATCH_MAX = 30, BATCH_PAR = 2;
+// Τιμολόγια με email: κάθε επιχείρηση έχει τη δική της διεύθυνση <κωδικός>@inbox.arakronservices.gr
+const INBOX_DOMAIN = "inbox.arakronservices.gr";
+function newInboxToken() { const a = "abcdefghjkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint8Array(12)); return [...r].map(x => a[x % a.length]).join(""); }
+async function inboxList(t) { try { const r = await fetch("/api/inbox?t=" + encodeURIComponent(t)); if (!r.ok) return []; return (await r.json()).items || []; } catch { return []; } }
+function inboxDelete(t, key) { return fetch("/api/inbox?t=" + encodeURIComponent(t) + "&key=" + encodeURIComponent(key), { method: "DELETE" }).catch(() => {}); }
 
 function ReadingCard() {
   const [sec, setSec] = useState(0);
@@ -651,7 +660,7 @@ function ReadingCard() {
     </div>
   );
 }
-function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onEditDone }) {
+function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onEditDone, onInboxChange }) {
   const [files, setFiles] = useState([]);       // {id, blob, mimeType, url, name}
   const [phase, setPhase] = useState(editInv ? "review" : "pick");   // pick | reading | review | done
   const [draft, setDraft] = useState(() => editInv ? invoiceToDraft(editInv, data.suppliers.find(x => x.id === editInv.supplierId)) : null);
@@ -667,16 +676,38 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
   const [running, setRunning] = useState(false);
   const queue = useRef([]), active = useRef(0), saveChain = useRef(Promise.resolve());
   const upd = (id, patch) => setItems(its => its.map(x => x.id === id ? { ...x, ...patch } : x));
+  // Τιμολόγια που ήρθαν με email και περιμένουν ανάγνωση
+  const token = settings.inboxToken || "";
+  const [inbox, setInbox] = useState([]);
+  const [inboxBusy, setInboxBusy] = useState(false);
+  useEffect(() => { if (!editInv && token) inboxList(token).then(setInbox); }, [token]); // eslint-disable-line
+  // Όταν ένα τιμολόγιο από email αποθηκευτεί ή παραλειφθεί, φεύγει από τη θυρίδα
+  function inboxDone(it) { if (it && it.inboxKey && token) { inboxDelete(token, it.inboxKey); onInboxChange && onInboxChange(); } }
+  async function readInbox() {
+    setInboxBusy(true); setError("");
+    const files = [], keys = [], errs = [];
+    for (const m of inbox.slice(0, BATCH_MAX)) {
+      try {
+        const r = await fetch("/api/inbox?t=" + encodeURIComponent(token) + "&key=" + encodeURIComponent(m.key));
+        if (!r.ok) throw new Error();
+        const blob = await r.blob();
+        files.push(new File([blob], m.filename || "timologio.pdf", { type: m.contentType || blob.type })); keys.push(m);
+      } catch { errs.push("Δεν κατέβηκε το " + (m.filename || "αρχείο")); }
+    }
+    setInboxBusy(false);
+    if (errs.length) setError(errs.join(". "));
+    if (files.length) startBatch(files, keys);
+  }
   useEffect(() => {
     if (!running) return;
     const h = e => { e.preventDefault(); e.returnValue = ""; };
     window.addEventListener("beforeunload", h); return () => window.removeEventListener("beforeunload", h);
   }, [running]);
 
-  async function startBatch(list) {
+  async function startBatch(list, keys = []) {
     setError("");
     const arr = [...list].slice(0, BATCH_MAX), out = [], errs = [];
-    for (const f of arr) { try { const x = await prepFile(f); if (x) out.push({ id: x.id, file: x, status: "wait" }); } catch (e) { errs.push(e.message); } }
+    for (let i = 0; i < arr.length; i++) { const f = arr[i], k = keys[i]; try { const x = await prepFile(f); if (x) out.push({ id: x.id, file: x, status: "wait", inboxKey: k ? k.key : null, src: k ? [k.from, k.subject].filter(Boolean).join(" · ") : "" }); } catch (e) { errs.push(e.message); } }
     if (list.length > BATCH_MAX) errs.push(`Πάρθηκαν τα πρώτα ${BATCH_MAX} αρχεία. Τα υπόλοιπα ανέβασέ τα σε δεύτερο γύρο.`);
     if (errs.length) setError(errs.join(" "));
     if (!out.length) return;
@@ -704,7 +735,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
         const reasons = await batchProblems(draft, own);
         return reasons.length ? { reasons } : { saved: await saveDraft(draft, [it.file]) };
       }));
-      if (r.saved) upd(id, { status: "saved", inv: r.saved.inv, alerts: r.saved.alerts, draft: null });
+      if (r.saved) { upd(id, { status: "saved", inv: r.saved.inv, alerts: r.saved.alerts, draft: null }); inboxDone(it); }
       else upd(id, { status: "review", draft, meta, reasons: r.reasons });
     } catch (e) { upd(id, { status: "error", error: e.message || String(e) }); }
   }
@@ -746,7 +777,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
     } catch (e) { setError(e.message || String(e)); setPhase("pick"); }
   }
 
-  function reset() { if (editInv) { onEditDone(editInv.id); return; } if (batchId) { backToBatch(); return; } items.forEach(x => x.file.url && URL.revokeObjectURL(x.file.url)); setItems([]); setReadMeta(null); files.forEach(f => f.url && URL.revokeObjectURL(f.url)); setFiles([]); setDraft(null); setPhase("pick"); setError(""); setDoneInfo(null); }
+  function reset() { if (editInv) { onEditDone(editInv.id); return; } if (batchId) { backToBatch(); return; } items.forEach(x => x.file.url && URL.revokeObjectURL(x.file.url)); setItems([]); if (token) inboxList(token).then(setInbox); setReadMeta(null); files.forEach(f => f.url && URL.revokeObjectURL(f.url)); setFiles([]); setDraft(null); setPhase("pick"); setError(""); setDoneInfo(null); }
 
   const matched = useMemo(() => {
     if (!draft) return null;
@@ -762,7 +793,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
     setSaving(true);
     try {
       if (editInv) { await saveDraft(draft, [], editInv); onEditDone(editInv.id); return; }
-      if (batchId) { const r = await saveDraft(draft, files); upd(batchId, { status: "saved", inv: r.inv, alerts: r.alerts, draft: null }); setSaving(false); backToBatch(); return; }
+      if (batchId) { const r = await saveDraft(draft, files); upd(batchId, { status: "saved", inv: r.inv, alerts: r.alerts, draft: null }); inboxDone(items.find(x => x.id === batchId)); setSaving(false); backToBatch(); return; }
       const r = await saveDraft(draft, files); setDoneInfo(r); setPhase("done");
     }
     catch (e) { setError("Αποτυχία αποθήκευσης: " + e.message); }
@@ -802,12 +833,13 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
               <div className="bth">{x.file.url ? <img src={x.file.url} alt="" /> : <span>PDF</span>}</div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="row" style={{ gap: 8 }}><span className={"badge " + label[x.status][0]}>{label[x.status][1]}</span><span className="sm mut ell">{x.file.name}</span></div>
+                {x.src && <div className="sm mut ell" style={{ marginTop: 2 }}>Email: {x.src}</div>}
                 {x.status === "saved" && x.inv && <div className="sm" style={{ marginTop: 4 }}><b>{(data.suppliers.find(s => s.id === x.inv.supplierId) || {}).name || ""}</b> · {fmtDate(x.inv.date)} · {fmtEur(x.inv.total)}{(x.alerts || []).length ? <span className="badge b-warn" style={{ marginLeft: 6 }}>{x.alerts.length} αλλαγές τιμών</span> : null}</div>}
                 {x.status === "review" && <div className="sm" style={{ marginTop: 4, color: "var(--up)" }}>{x.draft && x.draft.supplier.name ? <b style={{ color: "var(--ink)" }}>{x.draft.supplier.name}: </b> : null}{x.reasons.join(", ")}</div>}
                 {x.status === "error" && <div className="sm" style={{ marginTop: 4, color: "var(--up)" }}>{x.error}</div>}
               </div>
               <div className="row nw" style={{ gap: 6 }}>
-                {x.status === "review" && <><button className="btn sm p" onClick={() => reviewItem(x)}>Έλεγχος</button><button className="btn sm" onClick={() => upd(x.id, { status: "skip" })}>Παράλειψη</button></>}
+                {x.status === "review" && <><button className="btn sm p" onClick={() => reviewItem(x)}>Έλεγχος</button><button className="btn sm" onClick={() => { upd(x.id, { status: "skip" }); inboxDone(x); }}>Παράλειψη</button></>}
                 {x.status === "error" && <button className="btn sm" onClick={() => retryItem(x.id)}>Ξανά</button>}
                 {x.status === "saved" && x.inv && <button className="btn sm" onClick={() => goInvoice(x.inv.id)}>Προβολή</button>}
               </div>
@@ -849,6 +881,15 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
       <h1>Νέο τιμολόγιο</h1>
       <p className="sub">Η εφαρμογή διαβάζει προμηθευτή, είδη και τιμές. Πριν την αποθήκευση τα ελέγχεις.</p>
       {error && <div className="alert e mb">{error}</div>}
+      {inbox.length > 0 && (
+        <div className="inbox-cta mb">
+          <div style={{ minWidth: 0 }}>
+            <b>{inbox.length === 1 ? "Ήρθε 1 τιμολόγιο με email" : `Ήρθαν ${inbox.length} τιμολόγια με email`}</b>
+            <div className="mut sm ell">{inbox.slice(0, 3).map(m => (m.from || "").replace(/<.*>/, "").trim() || m.filename).join(" · ")}{inbox.length > 3 ? " …" : ""}</div>
+          </div>
+          <span className="sp" /><button className="btn p" disabled={inboxBusy} onClick={readInbox}>{inboxBusy ? "Κατέβασμα…" : "Ανάγνωση τώρα"}</button>
+        </div>
+      )}
       <div className={"drop" + (over ? " over" : "")}
         onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
         onDrop={e => { e.preventDefault(); setOver(false); addFiles([...e.dataTransfer.files]); }}>
@@ -1398,7 +1439,7 @@ function AlertsPage({ data, products = [], supById, openProduct, markAllRead, se
 /* =========================================================
    Αρχική
    ========================================================= */
-function Dashboard({ data, supById, products, go, openSupplier, openProduct, openInvoice, settings }) {
+function Dashboard({ data, supById, products, go, openSupplier, openProduct, openInvoice, settings, inboxN = 0 }) {
   const now = new Date();
   const m = periodRange({ preset: "month" }), pm = periodRange({ preset: "prev" });
   const thisM = data.invoices.filter(i => inRange(i.date, m)), prevM = data.invoices.filter(i => inRange(i.date, pm));
@@ -1422,12 +1463,17 @@ function Dashboard({ data, supById, products, go, openSupplier, openProduct, ope
   const monthName = now.toLocaleDateString("el-GR", { month: "long" });
   const unread = data.alerts.filter(a => !a.read).length;
 
+  const inboxBanner = inboxN > 0 && (
+    <div className="inbox-cta mb"><div><b>{inboxN === 1 ? "Ήρθε 1 τιμολόγιο με email" : `Ήρθαν ${inboxN} τιμολόγια με email`}</b><div className="mut sm">Περιμένουν ανάγνωση.</div></div><span className="sp" /><button className="btn p" onClick={() => go("scan")}>Ανάγνωση</button></div>
+  );
+
   if (!data.invoices.length) return (
+    <>{inboxBanner}
     <div className="card" style={{ padding: "56px 28px", maxWidth: 640 }}>
       <h1>Ξεκίνα με το πρώτο τιμολόγιο</h1>
       <p className="sub" style={{ maxWidth: 480, margin: "10px 0 24px" }}>Φωτογράφισέ το ή ανέβασε το PDF. Η εφαρμογή διαβάζει προμηθευτή, είδη και τιμές, φτιάχνει την καρτέλα του προμηθευτή και σε ειδοποιεί όταν κάτι ακριβαίνει.</p>
       <button className="btn g" onClick={() => go("scan")}><Icon n="cam" /> Σάρωση τιμολογίου</button>
-    </div>
+    </div></>
   );
 
   return (
@@ -1437,6 +1483,7 @@ function Dashboard({ data, supById, products, go, openSupplier, openProduct, ope
         <span className="sp" />
         <button className="btn g" onClick={() => go("scan")}><Icon n="cam" /> Νέο τιμολόγιο</button>
       </div>
+      {inboxBanner}
 
       <div className="kpis">
         <div className="kpi"><div className="l">Αγορές {monthName}, με ΦΠΑ</div><div className="v">{fmtEur(tot)}</div>
@@ -1531,6 +1578,16 @@ function SettingsPage({ settings, saveSettings, data, reload, toast, products, r
           <Field label="Ειδοποίηση από μεταβολή %" inputMode="decimal" value={numStr(s.threshold)} onChange={v => setS(x => ({ ...x, threshold: v }))} />
         </div>
         <div className="row mt"><span className="sp" /><button className="btn p" disabled={!validAfm(s.ownAfm || "") || !(s.businessName || "").trim()} onClick={() => { saveSettings({ ...settings, businessName: s.businessName.trim(), businessType: (s.businessType || "").trim(), ownAfm: s.ownAfm, threshold: parseNum(s.threshold) ?? 1 }); toast("Αποθηκεύτηκε"); }}>Αποθήκευση</button></div>
+      </div>
+      <div className="card mb">
+        <h2>Τιμολόγια με email</h2>
+        <p className="mut sm" style={{ marginTop: 0 }}>Δώσε αυτή τη διεύθυνση στους προμηθευτές σου, ή κάνε προώθηση εκεί τα email με τιμολόγια. Τα PDF και οι φωτογραφίες που φτάνουν εμφανίζονται στο «Νέο τιμολόγιο» για ανάγνωση.</p>
+        {settings.inboxToken ? (
+          <div className="addr"><span style={{ flex: 1, minWidth: 0 }}>{settings.inboxToken}@{INBOX_DOMAIN}</span>
+            <button className="btn sm" onClick={() => { navigator.clipboard.writeText(settings.inboxToken + "@" + INBOX_DOMAIN).then(() => toast("Αντιγράφηκε")).catch(() => {}); }}>Αντιγραφή</button></div>
+        ) : <div className="mut sm">Δημιουργείται…</div>}
+        <div className="row mt"><span className="mut sm">Αν η διεύθυνση έχει διαρρεύσει, φτιάξε νέα. Η παλιά θα σταματήσει να δουλεύει.</span><span className="sp" />
+          <button className="btn sm" onClick={() => { if (confirm("Νέα διεύθυνση; Η παλιά θα σταματήσει να δουλεύει και πρέπει να δώσεις τη νέα στους προμηθευτές.")) saveSettings({ ...settings, inboxToken: newInboxToken() }); }}>Νέα διεύθυνση</button></div>
       </div>
       <div className="card mb">
         <h2>Κατηγορίες ειδών</h2>
@@ -1699,6 +1756,11 @@ function App() {
     await reload(); setToastMsg(to ? "Η κατηγορία ενημερώθηκε" : "Η κατηγορία διαγράφηκε");
   }
   async function saveSettings(s) { await dbPut("meta", { ...s, id: "settings" }); await reload(); }
+  // Διεύθυνση email για τιμολόγια: δημιουργείται μία φορά ανά επιχείρηση
+  useEffect(() => { if (ready && settings.ownAfm && !settings.inboxToken) saveSettings({ ...settings, inboxToken: newInboxToken() }); }, [ready, settings.ownAfm, settings.inboxToken]); // eslint-disable-line
+  const [inboxN, setInboxN] = useState(0);
+  const refreshInbox = () => { if (settings.inboxToken) inboxList(settings.inboxToken).then(l => setInboxN(l.length)); };
+  useEffect(refreshInbox, [settings.inboxToken, page]); // eslint-disable-line
   async function updateSupplier(s) { await dbPut("suppliers", s); await reload(); setToastMsg("Αποθηκεύτηκε"); }
 
   if (!ready) return <div className="empty" style={{ paddingTop: 120 }}><div className="spin" /></div>;
@@ -1710,7 +1772,7 @@ function App() {
 
   let content;
   const editInv = editId && data.invoices.find(i => i.id === editId);
-  if (page === "scan") content = <ScanPage key={editId || "new"} editInv={editInv} onEditDone={endEdit} data={vdata} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} />;
+  if (page === "scan") content = <ScanPage key={editId || "new"} editInv={editInv} onEditDone={endEdit} data={vdata} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} onInboxChange={refreshInbox} />;
   else if (page === "invoices") content = <InvoicesPage data={vdata} supById={supById} openInvoice={setInvoiceId} />;
   else if (page === "suppliers") content = supplier
     ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} />
@@ -1718,7 +1780,7 @@ function App() {
   else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} autoClassify={autoClassify} />;
   else if (page === "alerts") content = <AlertsPage data={vdata} products={products} settings={settings} supById={supById} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
   else if (page === "settings") content = <SettingsPage products={products} renameCategory={renameCategory} settings={settings} saveSettings={saveSettings} data={vdata} reload={reload} toast={setToastMsg} />;
-  else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} openInvoice={setInvoiceId} settings={settings} />;
+  else content = <Dashboard data={vdata} supById={supById} products={products} go={go} openSupplier={openSupplier} openProduct={setProductKeyOpen} openInvoice={setInvoiceId} settings={settings} inboxN={inboxN} />;
 
   return (
     <>

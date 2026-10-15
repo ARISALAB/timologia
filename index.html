@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PriceArmor | Τιμές προμηθευτών και τιμολόγια σε μία εφαρμογή</title>
-<meta name="description" content="Φωτογράφισε το τιμολόγιο. Το PriceArmor καταγράφει προμηθευτές, είδη και τιμές και σε ειδοποιεί όταν κάτι ακριβαίνει. Για εστιατόρια, καφέ, μαγαζιά και κάθε επιχείρηση. Από την AR Akron Services.">
+<meta name="description" content="Οι προμηθευτές στέλνουν τα τιμολόγια σε δική σου διεύθυνση email. Το PriceArmor τα διαβάζει μόνο του και σου λέει τι ακρίβυνε, πόσα έχασες και από ποιον. Για εστιατόρια, καφέ και κάθε επιχείρηση. Από την AR Akron Services.">
 <meta name="theme-color" content="#1C2230">
 <link rel="canonical" href="https://pricearmor.arakronservices.gr/">
 <meta property="og:url" content="https://pricearmor.arakronservices.gr/">
 <meta property="og:title" content="PriceArmor: ο προμηθευτής ανέβασε την τιμή. Εσύ το έμαθες;">
-<meta property="og:description" content="Φωτογράφισε το τιμολόγιο και μάθε αμέσως τι ακρίβυνε, πόσο και πόσα σου κοστίζει.">
+<meta property="og:description" content="Τα τιμολόγια έρχονται με email και διαβάζονται μόνα τους. Εσύ μαθαίνεις τι ακρίβυνε, πόσα έχασες και από ποιον.">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="el_GR">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +24,7 @@
   "applicationCategory": "BusinessApplication",
   "operatingSystem": "Web",
   "inLanguage": "el",
-  "description": "Εφαρμογή που διαβάζει τιμολόγια αγορών, φτιάχνει καρτέλες προμηθευτών και ιστορικό τιμών, και ειδοποιεί όταν αλλάζουν οι τιμές.",
+  "description": "Εφαρμογή που παραλαμβάνει τιμολόγια αγορών με email ή φωτογραφία, τα διαβάζει αυτόματα, φτιάχνει καρτέλες προμηθευτών και ιστορικό τιμών, και ειδοποιεί όταν αλλάζουν οι τιμές.",
   "offers": [
     {"@type": "Offer", "name": "Basic", "price": "24", "priceCurrency": "EUR", "description": "Μηνιαία συνδρομή, πλέον ΦΠΑ"},
     {"@type": "Offer", "name": "Pro", "price": "49", "priceCurrency": "EUR", "description": "Μηνιαία συνδρομή, πλέον ΦΠΑ"},
@@ -92,6 +92,11 @@ nav.bar .btn{padding:10px 16px;font-size:15px}
 .arow .e{font-size:13px;color:var(--muted);text-align:right}
 .arow.dn .d{color:var(--down)}
 .alertc{animation:rise .7s .35s cubic-bezier(.2,.8,.2,1) both}
+.mailc{position:absolute;right:4%;top:-18px;display:flex;align-items:center;gap:10px;background:#fff;color:var(--ink);border-radius:12px;padding:10px 14px;box-shadow:0 16px 36px rgba(0,0,0,.35);font-size:13px;line-height:1.3;animation:rise .6s .1s cubic-bezier(.2,.8,.2,1) both;z-index:2}
+.mailc svg{width:20px;height:20px;color:var(--brass);flex:0 0 auto}
+.mailc b{display:block;font-size:13.5px}
+.mailc .mb{background:var(--up);color:#fff;font-weight:700;font-size:12px;border-radius:99px;padding:1px 8px;margin-left:4px}
+.addr-ex{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.92em;background:var(--brass-soft);padding:1px 6px;border-radius:5px;color:var(--ink);white-space:nowrap}
 @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 
 section{padding:96px 0}
@@ -187,6 +192,7 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
   .demo{min-height:380px}
   .inv{width:88%;padding:16px}
   .alertc{width:84%;padding:14px 16px}
+  .mailc{top:-26px;right:0;font-size:12px;padding:8px 12px}
   .hero .cta .btn{width:100%}
   .calc{font-size:16px}
   .calc .res{flex-direction:column;align-items:flex-start;font-size:18px}
@@ -209,7 +215,7 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
     <div class="hero">
       <div>
         <h1>Ο προμηθευτής ανέβασε την τιμή. <span>Εσύ το έμαθες;</span></h1>
-        <p class="lead">Φωτογράφισε το τιμολόγιο. Το PriceArmor καταγράφει προμηθευτές, είδη και τιμές, και σου λέει αμέσως τι ακρίβυνε και πόσα σου κοστίζει.</p>
+        <p class="lead">Οι προμηθευτές στέλνουν τα τιμολόγια σε μια δική σου διεύθυνση email, ή τα φωτογραφίζεις. Το PriceArmor τα διαβάζει μόνο του και σου λέει τι ακρίβυνε, πόσα έχασες και από ποιον.</p>
         <div class="cta">
           <a class="btn g" href="/app/">Ξεκίνα δωρεάν</a>
           <a class="btn o" href="#pos">Πώς δουλεύει</a>
@@ -217,7 +223,8 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
         <div class="note">Χωρίς κάρτα, χωρίς κωδικούς Taxisnet. Ανοίγει στο κινητό και στον υπολογιστή.</div>
       </div>
 
-      <div class="demo" aria-label="Παράδειγμα: ένα τιμολόγιο και η ειδοποίηση που βγαίνει από αυτό">
+      <div class="demo" aria-label="Παράδειγμα: ένα τιμολόγιο φτάνει με email και η ειδοποίηση που βγαίνει από αυτό">
+        <div class="mailc" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm-1 1 9 6.5L21 7"/></svg><div><b>Ήρθαν 3 τιμολόγια <span class="mb">3</span></b>tavernaplaka@inbox.arakronservices.gr</div></div>
         <div class="inv" aria-hidden="true">
           <div class="ih"><div><b>Γαλακτοκομικά Ηπείρου Α.Ε.</b>ΑΦΜ 094014201</div><div style="text-align:right"><b>Τιμολόγιο Α 1221</b>02/10/2026</div></div>
           <table>
@@ -229,7 +236,7 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
           <div class="it"><span>Καθαρή <b>348,70 €</b></span><span>Σύνολο με ΦΠΑ <b>394,03 €</b></span></div>
         </div>
         <div class="alertc">
-          <div class="t"><i></i>Τι ακρίβυνε σε αυτό το τιμολόγιο</div>
+          <div class="t"><i></i>Τι ακρίβυνε, και πόσα σου κόστισε</div>
           <div class="arow"><span class="n">Φέτα ΠΟΠ Δωδώνη</span><span class="d">+7,3%</span><span class="s">8,20 € → 8,80 € το κιλό</span><span class="e">+12,00 €</span></div>
           <div class="arow"><span class="n">Κεφαλοτύρι</span><span class="d">+6,7%</span><span class="s">13,50 € → 14,40 € το κιλό</span><span class="e">+5,40 €</span></div>
           <div class="arow dn"><span class="n">Γιαούρτι στραγγιστό</span><span class="d">−2,9%</span><span class="s">3,50 € → 3,40 € το κιλό</span><span class="e">−1,20 €</span></div>
@@ -242,27 +249,29 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
 <main>
   <section id="pos">
     <div class="wrap">
-      <h2>Τρία βήματα, ένα λεπτό ανά τιμολόγιο</h2>
-      <p class="intro">Ο υπάλληλος παραλαμβάνει, βγάζει φωτογραφία, και τα υπόλοιπα γίνονται μόνα τους.</p>
+      <h2>Τα τιμολόγια έρχονται μόνα τους. Εσύ βλέπεις μόνο το αποτέλεσμα.</h2>
+      <p class="intro">Χωρίς πληκτρολόγηση και χωρίς συρτάρια με χαρτιά. Ξοδεύεις χρόνο μόνο σε ό,τι θέλει πραγματικά την προσοχή σου.</p>
       <div class="steps">
-        <div class="step"><div class="num">Βήμα 1</div><h3>Φωτογράφισε ή ανέβασε</h3><p>Φωτογραφία από το κινητό ή PDF από το email. Δέχεται και πολυσέλιδα τιμολόγια.</p></div>
-        <div class="step"><div class="num">Βήμα 2</div><h3>Έλεγξε με μια ματιά</h3><p>Η εφαρμογή διαβάζει προμηθευτή, είδη, ποσότητες και τιμές. Εσύ βλέπεις το τιμολόγιο δίπλα και διορθώνεις ό,τι χρειάζεται.</p></div>
-        <div class="step"><div class="num">Βήμα 3</div><h3>Μαθαίνεις τι άλλαξε</h3><p>Κάθε είδος συγκρίνεται με την προηγούμενη αγορά. Αν ακρίβυνε, το βλέπεις αμέσως, με το ποσό που σου κοστίζει.</p></div>
+        <div class="step"><div class="num">Βήμα 1</div><h3>Τα τιμολόγια φτάνουν</h3><p>Δίνεις στους προμηθευτές τη δική σου διεύθυνση, π.χ. <span class="addr-ex">tavernaplaka@inbox…</span>, ή κάνεις προώθηση από το email σου. Για τα χάρτινα, μια φωτογραφία από το κινητό.</p></div>
+        <div class="step"><div class="num">Βήμα 2</div><h3>Διαβάζονται αυτόματα</h3><p>Προμηθευτής, είδη, ποσότητες, τιμές. Όσα διαβάζονται σωστά αποθηκεύονται μόνα τους. Όσα έχουν κάτι περίεργο, σου τα δείχνει να τα ελέγξεις.</p></div>
+        <div class="step"><div class="num">Βήμα 3</div><h3>Μαθαίνεις πόσα έχασες</h3><p>Το καμπανάκι σού λέει τι ακρίβυνε. Η σελίδα «Αλλαγές τιμών» σού λέει, σε απλά λόγια, πόσα πλήρωσες παραπάνω και ποιος προμηθευτής σε ακρίβυνε.</p></div>
       </div>
     </div>
   </section>
 
   <section id="ti" style="padding-top:0">
     <div class="wrap">
-      <h2>Ό,τι χρειάζεσαι για τις αγορές σου</h2>
-      <p class="intro">Φτιαγμένο για ελληνικά τιμολόγια και για ανθρώπους που δεν έχουν χρόνο για λογιστικά προγράμματα.</p>
+      <h2>Ό,τι χρειάζεσαι για να μη σε ακριβαίνουν χωρίς να το ξέρεις</h2>
+      <p class="intro">Φτιαγμένο για ελληνικά τιμολόγια και για ανθρώπους που δεν έχουν χρόνο για λογιστικά προγράμματα. Ανοίγει στο κινητό και στον υπολογιστή, χωρίς εγκατάσταση.</p>
       <div class="feat">
-        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><h3>Τι ακρίβυνε, με το ποσό</h3><p>Δεν σου λέει απλώς «+7%». Σου λέει ότι στο συγκεκριμένο τιμολόγιο πλήρωσες 12 € παραπάνω.</p></div>
-        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11v10H3zm11 4h4l3 3v3h-7M7 19.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg><h3>Καρτέλα κάθε προμηθευτή</h3><p>Όλα του τα τιμολόγια, πόσα του έχεις δώσει σε κάθε περίοδο, και τι σου πουλάει σε ποια τιμή.</p></div>
-        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h6"/></svg><h3>Κατηγορίες που φτιάχνονται μόνες τους</h3><p>Άλλες κατηγορίες έχει μια ταβέρνα, άλλες ένα κομμωτήριο. Η εφαρμογή τις δημιουργεί από τα δικά σου τιμολόγια.</p></div>
-        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><h3>Μόνο τα δικά σου τιμολόγια</h3><p>Ελέγχει το ΑΦΜ του αγοραστή. Ένα τιμολόγιο άλλης επιχείρησης δεν μπαίνει κατά λάθος στα έξοδά σου.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm-1 1 9 6.5L21 7"/></svg><h3>Δική σου διεύθυνση για τιμολόγια</h3><p>Κάθε επιχείρηση παίρνει διεύθυνση με το όνομά της. Ό,τι PDF φτάνει εκεί, το βρίσκεις έτοιμο για ανάγνωση στην εφαρμογή.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5m-6 6 6-6 6 6M4 21h16"/></svg><h3>Πολλά τιμολόγια μαζί</h3><p>Ανέβασε έως 30 αρχεία με μία κίνηση, π.χ. τα τιμολόγια ενός μήνα. Τα σωστά αποθηκεύονται μόνα τους, τα υπόλοιπα μπαίνουν σε λίστα για έλεγχο.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><h3>Πόσα έχασες, σε απλά λόγια</h3><p>Όχι «+7%», αλλά «τα λεμόνια ανέβηκαν από 0,90 € σε 1,40 € το κιλό και σου κόστισαν 9,85 € παραπάνω σε 2 αγορές», με το πώς βγαίνει το ποσό.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11v10H3zm11 4h4l3 3v3h-7M7 19.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg><h3>Ποιος σε ακρίβυνε, και πού είναι φθηνότερα</h3><p>Κατάταξη προμηθευτών με βάση το πόσο σου κόστισαν. Αν το ίδιο είδος το έχεις πάρει φθηνότερα από άλλον, σου το θυμίζει.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zm4 4h4"/></svg><h3>Καμπανάκι για κάθε αύξηση</h3><p>Μόλις ένα τιμολόγιο φέρει νέα τιμή, το καμπανάκι δείχνει τον αριθμό. Ένα πάτημα, και βλέπεις τι άλλαξε και την ιστορία της τιμής.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm8 0v4h4M8 13h8M8 17h5"/></svg><h3>Καρτέλα κάθε προμηθευτή</h3><p>Όλα του τα τιμολόγια, πόσα του έχεις δώσει σε κάθε περίοδο, και τι σου πουλάει σε ποια τιμή. Ο ίδιος προμηθευτής γραμμένος αλλιώς ενώνεται σε μία καρτέλα.</p></div>
+        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7zM9 12l2 2 4-4"/></svg><h3>Μόνο τα δικά σου, μόνο για σένα</h3><p>Ελέγχει το ΑΦΜ αγοραστή, ώστε τιμολόγιο άλλης επιχείρησης να μη μπαίνει στα έξοδά σου. Οι προμηθευτές μπορούν μόνο να στέλνουν στη διεύθυνσή σου, όχι να διαβάζουν.</p></div>
         <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg><h3>Αρχείο για τον λογιστή</h3><p>Εξαγωγή σε Excel ανά περίοδο ή ανά προμηθευτή, με ΑΦΜ, ΜΑΡΚ, καθαρή αξία και ΦΠΑ.</p></div>
-        <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm3 15h2"/></svg><h3>Στο κινητό, στον πάγκο</h3><p>Δεν χρειάζεται εγκατάσταση. Ανοίγει στον browser του κινητού, εκεί που φτάνει το τιμολόγιο.</p></div>
       </div>
     </div>
   </section>
@@ -292,14 +301,14 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
         <div class="plan">
           <h3>Basic</h3><div class="for">Για ένα κατάστημα</div>
           <div class="price">24 € <small>/ μήνα + ΦΠΑ</small></div><div class="yr">ή 240 € τον χρόνο</div>
-          <ul><li>Έως 100 τιμολόγια τον μήνα</li><li>Καρτέλες προμηθευτών</li><li>Ειδοποιήσεις αλλαγής τιμών</li><li>Αυτόματες κατηγορίες ειδών</li><li>Εξαγωγή σε Excel</li></ul>
+          <ul><li>Έως 100 τιμολόγια τον μήνα</li><li>Διεύθυνση email για τιμολόγια</li><li>Μαζικό ανέβασμα</li><li>Αλλαγές τιμών και καμπανάκι</li><li>Καρτέλες προμηθευτών</li><li>Εξαγωγή σε Excel</li></ul>
           <a class="btn ol" href="/app/">Δωρεάν δοκιμή</a>
         </div>
         <div class="plan pop">
           <span class="tag">Οι περισσότεροι διαλέγουν</span>
           <h3>Pro</h3><div class="for">Για επιχειρήσεις με πολλούς προμηθευτές</div>
           <div class="price">49 € <small>/ μήνα + ΦΠΑ</small></div><div class="yr">ή 490 € τον χρόνο</div>
-          <ul><li>Έως 400 τιμολόγια τον μήνα</li><li>Όλα όσα έχει το Basic</li><li>Εξαγωγή ανά προμηθευτή για τον λογιστή</li><li class="soon">Πληρωμές και υπόλοιπα προμηθευτών<span class="soonb">σύντομα</span></li><li class="soon">Πολλοί χρήστες<span class="soonb">σύντομα</span></li></ul>
+          <ul><li>Έως 400 τιμολόγια τον μήνα</li><li>Όλα όσα έχει το Basic</li><li>Κατάταξη προμηθευτών και φθηνότερες επιλογές</li><li>Εξαγωγή ανά προμηθευτή για τον λογιστή</li><li class="soon">Πληρωμές και υπόλοιπα προμηθευτών<span class="soonb">σύντομα</span></li><li class="soon">Πολλοί χρήστες<span class="soonb">σύντομα</span></li></ul>
           <a class="btn k" href="/app/">Δωρεάν δοκιμή</a>
         </div>
         <div class="plan">
@@ -318,10 +327,12 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
       <h2>Συχνές ερωτήσεις</h2>
       <div class="faq">
         <details><summary>Χρειάζομαι κωδικούς Taxisnet ή σύνδεση με το myDATA;</summary><p>Όχι. Η εφαρμογή διαβάζει το ίδιο το τιμολόγιο, από φωτογραφία ή PDF. Δεν ζητάμε κανέναν κωδικό.</p></details>
-        <details><summary>Τι τιμολόγια διαβάζει;</summary><p>Τιμολόγια αγορών, δελτία αποστολής-τιμολόγια, λογαριασμούς υπηρεσιών (ρεύμα, τηλεφωνία, λογιστή) και αποδείξεις. Φωτογραφία από το κινητό, εικόνα ή PDF, και πολυσέλιδα έως 6 σελίδες.</p></details>
-        <details><summary>Κι αν διαβάσει κάτι λάθος;</summary><p>Πριν αποθηκευτεί οτιδήποτε, βλέπεις τα στοιχεία δίπλα στο τιμολόγιο και τα διορθώνεις. Αν λείπει το σύνολο ή η ημερομηνία, η εφαρμογή δεν σε αφήνει να το αποθηκεύσεις. Μπορείς επίσης να διορθώσεις ένα τιμολόγιο αργότερα.</p></details>
+        <details><summary>Πώς δουλεύει η διεύθυνση email;</summary><p>Με την πρώτη χρήση, η επιχείρησή σου παίρνει διεύθυνση με το όνομά της, π.χ. <span class="addr-ex">tavernaplaka@inbox.arakronservices.gr</span>. Τη δίνεις στους προμηθευτές για να βάζουν και αυτή στα τιμολόγια που στέλνουν, ή κάνεις προώθηση από το δικό σου email. Τα PDF και οι φωτογραφίες που φτάνουν εμφανίζονται στην εφαρμογή, με ειδοποίηση, και τα διαβάζεις με ένα κουμπί.</p></details>
+        <details><summary>Μπορεί κάποιος άλλος να δει τα τιμολόγιά μου;</summary><p>Όχι. Η διεύθυνση email χρησιμεύει μόνο για αποστολή. Τα τιμολόγια που περιμένουν τα διαβάζει μόνο η δική σου εφαρμογή, με ένα κρυφό κλειδί που δεν φεύγει από τη συσκευή σου. Μόλις ένα τιμολόγιο διαβαστεί και αποθηκευτεί, σβήνεται από τη θυρίδα.</p></details>
+        <details><summary>Τι τιμολόγια διαβάζει;</summary><p>Τιμολόγια αγορών, δελτία αποστολής-τιμολόγια, λογαριασμούς υπηρεσιών (ρεύμα, τηλεφωνία, λογιστή) και αποδείξεις. PDF από email, φωτογραφία από το κινητό ή εικόνα. Ένα τιμολόγιο μπορεί να έχει έως 6 σελίδες, και στο μαζικό ανέβασμα περνάς έως 30 τιμολόγια μαζί.</p></details>
+        <details><summary>Κι αν διαβάσει κάτι λάθος;</summary><p>Αυτόματα αποθηκεύονται μόνο τα τιμολόγια που διαβάστηκαν πλήρως: με προμηθευτή, ημερομηνία, σύνολο και είδη, στο δικό σου ΑΦΜ, χωρίς να υπάρχουν ήδη και με ποσά που συμφωνούν. Όλα τα υπόλοιπα μπαίνουν στη λίστα «Θέλει έλεγχο», όπου βλέπεις το τιμολόγιο και διορθώνεις πριν την αποθήκευση. Μπορείς επίσης να διορθώσεις ένα τιμολόγιο αργότερα.</p></details>
         <details><summary>Οι τιμές είναι με ή χωρίς ΦΠΑ;</summary><p>Οι τιμές των ειδών συγκρίνονται χωρίς ΦΠΑ, γιατί αυτό είναι το πραγματικό σου κόστος και γιατί μια αλλαγή συντελεστή δεν είναι αύξηση από τον προμηθευτή. Δίπλα φαίνεται και η τιμή με ΦΠΑ. Τα σύνολα αγορών είναι με ΦΠΑ, όπως τα πλήρωσες.</p></details>
-        <details><summary>Πού αποθηκεύονται τα δεδομένα μου;</summary><p>Στη δοκιμαστική έκδοση, στη συσκευή και στον browser που χρησιμοποιείς. Δεν φεύγουν από εκεί, εκτός από τη στιγμή της ανάγνωσης του τιμολογίου. Γι' αυτό, από τις Ρυθμίσεις κράτα αντίγραφο ασφαλείας. Στην επόμενη έκδοση έρχεται λογαριασμός με πρόσβαση από κάθε συσκευή.</p></details>
+        <details><summary>Πού αποθηκεύονται τα δεδομένα μου;</summary><p>Στη δοκιμαστική έκδοση, στη συσκευή και στον browser που χρησιμοποιείς. Δεν φεύγουν από εκεί, εκτός από τη στιγμή της ανάγνωσης του τιμολογίου. Τα τιμολόγια που φτάνουν με email περιμένουν στη θυρίδα σου μέχρι να τα διαβάσεις και μετά σβήνονται. Από τις Ρυθμίσεις κράτα αντίγραφο ασφαλείας. Στην επόμενη έκδοση έρχεται λογαριασμός με πρόσβαση από κάθε συσκευή.</p></details>
         <details><summary>Ταιριάζει στη δική μου επιχείρηση;</summary><p>Αν αγοράζεις τακτικά από προμηθευτές, ναι. Ξεκίνησε από την εστίαση, αλλά οι κατηγορίες ειδών φτιάχνονται από τα δικά σου τιμολόγια, οπότε δουλεύει το ίδιο για καφέ, μίνι μάρκετ, κομμωτήρια ή συνεργεία.</p></details>
       </div>
     </div>
@@ -330,7 +341,7 @@ footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
   <section style="padding-top:0">
     <div class="wrap">
       <div class="final">
-        <div><h2>Δοκίμασέ το με τα τιμολόγια της εβδομάδας</h2><p>Πέρασε πέντε τιμολόγια και δες τι άλλαξε. Χωρίς κάρτα, χωρίς εγγραφή.</p></div>
+        <div><h2>Δοκίμασέ το με τα τιμολόγια του μήνα</h2><p>Ανέβασέ τα όλα μαζί, ή στείλ' τα στη διεύθυνσή σου, και δες πόσα σου κόστισαν οι αυξήσεις. Χωρίς κάρτα, χωρίς εγγραφή.</p></div>
         <span class="sp"></span>
         <a class="btn k" href="/app/">Ξεκίνα δωρεάν</a>
       </div>

@@ -299,6 +299,20 @@ function validAfm(a) {
   let s = 0; for (let i = 0; i < 8; i++) s += Number(a[i]) * 2 ** (8 - i);
   return (s % 11) % 10 === Number(a[8]);
 }
+// Ίδιος προμηθευτής γραμμένος αλλιώς: αγνοούμε νομική μορφή και στίξη ("NOVA ... ΜΟΝ. ΑΕ" = "NOVA ... ΜΟΝΟΠΡΟΣΩΠΗ Α.Ε.")
+const LEGAL_W = new Set(["ΜΟΝΟΠΡΟΣΩΠΗ", "ΜΟΝΟΠΡΟΣΩΠΟΣ", "ΜΟΝ", "ΑΕ", "ΑΒΕΕ", "ΑΒΕΤΕ", "ΑΕΒΕ", "ΑΤΕ", "ΑΕΕ", "ΙΚΕ", "ΟΕ", "ΕΕ", "ΕΠΕ", "ΜΕΠΕ", "ΑΝΩΝΥΜΗ", "ΕΤΑΙΡΕΙΑ", "ΣΙΑ", "ΚΑΙ", "LTD", "SA", "IKE", "SINGLE", "MEMBER", "MON", "AE", "OE", "EE", "EPE", "SA", "AEBE", "ABEE"]);
+function supKey(name) { return normKey(name).split(" ").filter(w => w && !LEGAL_W.has(w)).join(" "); }
+function findSupplier(list, afm, name) {
+  afm = (afm || "").replace(/\D/g, "");
+  if (afm) { const s = list.find(x => x.afm === afm); if (s) return s; }
+  if (!(name || "").trim()) return null;
+  const ok = x => !(afm && x.afm && x.afm !== afm); // διαφορετικό ΑΦΜ = διαφορετικός προμηθευτής
+  const k = supKey(name);
+  return list.find(x => ok(x) && norm(x.name) === norm(name))
+    || (k && list.find(x => ok(x) && supKey(x.name) === k))
+    || (k.length >= 8 && list.find(x => { const xk = supKey(x.name); return ok(x) && xk.length >= 8 && (xk.startsWith(k) || k.startsWith(xk)); }))
+    || null;
+}
 function effPrice(l) { if (l.net > 0) return l.net / (l.quantity > 0 ? l.quantity : 1); if (l.unitPrice > 0) return l.unitPrice * (1 - (l.discountPct || 0) / 100); return null; }
 // Κλειδί σύγκρισης: αγνοεί τόνους, κεφαλαία, τελείες και σύμβολα ("Φέτα Π.Ο.Π." = "ΦΕΤΑ ΠΟΠ")
 const normKey = s => norm(s).replace(/[.'΄`’·]/g, "").replace(/[^A-Z0-9Α-Ω]+/g, " ").trim();
@@ -630,7 +644,7 @@ async function prepFile(f) {
 async function batchProblems(draft, ownAfm) {
   const [sups, invs] = await Promise.all([dbAll("suppliers"), dbAll("invoices")]);
   const afm = draft.supplier.afm.replace(/\D/g, "");
-  const sup = (afm && sups.find(s => s.afm === afm)) || (draft.supplier.name && sups.find(s => norm(s.name) === norm(draft.supplier.name)));
+  const sup = findSupplier(sups, afm, draft.supplier.name);
   const out = [];
   if (!draft.supplier.name.trim()) out.push("δεν βρέθηκε ο προμηθευτής");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.invoice.date || "")) out.push("λείπει η ημερομηνία");
@@ -782,7 +796,7 @@ function ScanPage({ data, settings, saveDraft, goInvoice, goAlerts, editInv, onE
   const matched = useMemo(() => {
     if (!draft) return null;
     const afm = draft.supplier.afm.replace(/\D/g, "");
-    return (afm && data.suppliers.find(s => s.afm === afm)) || (draft.supplier.name && data.suppliers.find(s => norm(s.name) === norm(draft.supplier.name))) || null;
+    return findSupplier(data.suppliers, afm, draft.supplier.name);
   }, [draft, data.suppliers]);
   const duplicate = useMemo(() => {
     if (!draft || !matched || !draft.invoice.number) return null;
@@ -1063,9 +1077,14 @@ function ProductsTable({ products, supById, onOpen, showSupplier }) {
   );
 }
 
-function SupplierDetail({ supplier, data, products, supById, openInvoice, openProduct, onBack, onUpdate }) {
+function SupplierDetail({ supplier, data, products, supById, openInvoice, openProduct, onBack, onUpdate, onMerge }) {
   const [period, setPeriod] = useState({ preset: "year" });
   const [edit, setEdit] = useState(false);
+  const [merge, setMerge] = useState(false), [other, setOther] = useState("");
+  // Πιθανά διπλά πρώτα (ίδιο όνομα χωρίς νομική μορφή)
+  const k = supKey(supplier.name);
+  const others = data.suppliers.filter(x => x.id !== supplier.id).sort((a, b) => (supKey(b.name) === k) - (supKey(a.name) === k) || a.name.localeCompare(b.name, "el"));
+  const likely = others.filter(x => supKey(x.name) === k || (k.length >= 8 && (supKey(x.name).startsWith(k) || k.startsWith(supKey(x.name)))));
   const r = periodRange(period);
   const all = data.invoices.filter(i => i.supplierId === supplier.id);
   const list = all.filter(i => inRange(i.date, r)).sort((a, b) => b.date.localeCompare(a.date));
@@ -1076,8 +1095,23 @@ function SupplierDetail({ supplier, data, products, supById, openInvoice, openPr
       <button className="btn sm mb" onClick={onBack}><Icon n="back" /> Προμηθευτές</button>
       <div className="row mb" style={{ alignItems: "flex-start" }}>
         <div><h1>{supplier.name}</h1><div className="mut">{supplier.afm ? "ΑΦΜ " + supplier.afm : "Χωρίς ΑΦΜ"}{supplier.doy ? ", ΔΟΥ " + supplier.doy : ""}</div></div>
-        <span className="sp" /><button className="btn" onClick={() => setEdit(true)}>Επεξεργασία</button>
+        <span className="sp" />{others.length > 0 && <button className="btn" onClick={() => setMerge(m => !m)}>Συγχώνευση</button>}<button className="btn" onClick={() => setEdit(true)}>Επεξεργασία</button>
       </div>
+      {likely.length > 0 && !merge && <div className="alert w mb">Μοιάζει με {likely.map(x => "«" + x.name + "»").join(", ")}. Αν είναι ο ίδιος προμηθευτής, πάτα «Συγχώνευση».</div>}
+      {merge && (
+        <div className="card mb">
+          <h2 style={{ marginTop: 0 }}>Ένωση με άλλον προμηθευτή</h2>
+          <p className="mut sm" style={{ marginTop: 0 }}>Τα τιμολόγια του προμηθευτή που θα διαλέξεις περνάνε σε αυτή την καρτέλα («{supplier.name}») και η άλλη καρτέλα διαγράφεται. Χρησιμοποίησέ το όταν ο ίδιος προμηθευτής γράφτηκε με δύο τρόπους.</p>
+          <div className="row">
+            <select className="in" style={{ maxWidth: 520 }} value={other} onChange={e => setOther(e.target.value)}>
+              <option value="">Διάλεξε προμηθευτή…</option>
+              {others.map(x => <option key={x.id} value={x.id}>{x.name}{x.afm ? " · ΑΦΜ " + x.afm : ""}{likely.includes(x) ? "  (πιθανό διπλό)" : ""}</option>)}
+            </select>
+            <button className="btn p" disabled={!other} onClick={async () => { const o = others.find(x => x.id === other); if (o && confirm(`Να ενωθεί ο «${o.name}» με τον «${supplier.name}»;`)) { await onMerge(other, supplier.id); setMerge(false); setOther(""); } }}>Ένωση</button>
+            <button className="btn" onClick={() => setMerge(false)}>Άκυρο</button>
+          </div>
+        </div>
+      )}
       <div className="kpis">
         <div className="kpi"><div className="l">Αγορές περιόδου, με ΦΠΑ</div><div className="v">{fmtEur(sum(list, i => i.total))}</div><div className="s">{list.length} τιμολόγια</div></div>
         <div className="kpi"><div className="l">Αγορές από την αρχή, με ΦΠΑ</div><div className="v">{fmtEur(sum(all, i => i.total))}</div><div className="s">{all.length} τιμολόγια</div></div>
@@ -1688,9 +1722,9 @@ function App() {
     const [suppliersNow, invoicesNow, stNow] = await Promise.all([dbAll("suppliers"), dbAll("invoices"), dbGet("meta", "settings")]);
     const S = { ...DEFAULT_SETTINGS, ...settings, ...(stNow || {}) };
     const afm = draft.supplier.afm.replace(/\D/g, "");
-    let sup = (afm && suppliersNow.find(s => s.afm === afm)) || (draft.supplier.name && suppliersNow.find(s => norm(s.name) === norm(draft.supplier.name))) || { id: uid(), createdAt: Date.now(), notes: "" };
+    let sup = findSupplier(suppliersNow, afm, draft.supplier.name) || { id: uid(), createdAt: Date.now(), notes: "" };
     const pick = k => (draft.supplier[k] || "").trim() || sup[k] || "";
-    sup = { ...sup, afm: afm || sup.afm || "", name: pick("name") || "Άγνωστος προμηθευτής", doy: pick("doy"), address: pick("address"), phone: pick("phone"), email: pick("email") };
+    sup = { ...sup, afm: afm || sup.afm || "", name: sup.name || pick("name") || "Άγνωστος προμηθευτής", doy: pick("doy"), address: pick("address"), phone: pick("phone"), email: pick("email") };
     await dbPut("suppliers", sup);
     const fileIds = [];
     for (const f of files) { const id = uid(); await dbPut("files", { id, blob: f.blob, mimeType: f.mimeType }); fileIds.push(id); }
@@ -1762,6 +1796,18 @@ function App() {
   const refreshInbox = () => { if (settings.inboxToken) inboxList(settings.inboxToken).then(l => setInboxN(l.length)); };
   useEffect(refreshInbox, [settings.inboxToken, page]); // eslint-disable-line
   async function updateSupplier(s) { await dbPut("suppliers", s); await reload(); setToastMsg("Αποθηκεύτηκε"); }
+  // Συγχώνευση: τα τιμολόγια του fromId περνάνε στον toId, ο fromId διαγράφεται
+  async function mergeSuppliers(fromId, toId) {
+    const from = data.suppliers.find(x => x.id === fromId), to = data.suppliers.find(x => x.id === toId);
+    if (!from || !to || fromId === toId) return;
+    for (const inv of data.invoices) if (inv.supplierId === fromId) await dbPut("invoices", { ...inv, supplierId: toId });
+    const fill = k => to[k] || from[k] || "";
+    await dbPut("suppliers", { ...to, afm: fill("afm"), doy: fill("doy"), address: fill("address"), phone: fill("phone"), email: fill("email"), notes: [to.notes, from.notes].filter(Boolean).join("\n") });
+    await dbDel("suppliers", fromId);
+    const pc = {}; for (const [k, v] of Object.entries(settings.productCats || {})) pc[k.startsWith(fromId + "|") ? toId + k.slice(fromId.length) : k] = v;
+    await dbPut("meta", { ...settings, id: "settings", productCats: pc });
+    await reload(); setToastMsg("Οι προμηθευτές ενώθηκαν");
+  }
 
   if (!ready) return <div className="empty" style={{ paddingTop: 120 }}><div className="spin" /></div>;
   if (!validAfm(settings.ownAfm || "")) return <SetupScreen settings={settings} onSave={saveSettings} />;
@@ -1775,7 +1821,7 @@ function App() {
   if (page === "scan") content = <ScanPage key={editId || "new"} editInv={editInv} onEditDone={endEdit} data={vdata} settings={settings} saveDraft={saveDraft} goInvoice={id => setInvoiceId(id)} goAlerts={() => go("alerts")} onInboxChange={refreshInbox} />;
   else if (page === "invoices") content = <InvoicesPage data={vdata} supById={supById} openInvoice={setInvoiceId} />;
   else if (page === "suppliers") content = supplier
-    ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} />
+    ? <SupplierDetail key={supplier.id} supplier={supplier} data={vdata} products={products} supById={supById} openInvoice={setInvoiceId} openProduct={setProductKeyOpen} onBack={() => setSupplierId(null)} onUpdate={updateSupplier} onMerge={mergeSuppliers} />
     : <SuppliersPage data={vdata} openSupplier={openSupplier} />;
   else if (page === "products") content = <ProductsPage products={products} supById={supById} openProduct={setProductKeyOpen} autoClassify={autoClassify} />;
   else if (page === "alerts") content = <AlertsPage data={vdata} products={products} settings={settings} supById={supById} openProduct={setProductKeyOpen} markAllRead={markAllRead} />;
